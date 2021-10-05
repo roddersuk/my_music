@@ -10,6 +10,7 @@ import '../models/playback_service.dart';
 import '../models/renderer_service.dart';
 import '../models/results_service.dart';
 import '../tools/utilities.dart';
+import '../constants.dart';
 
 class SelectScreen extends StatelessWidget {
   final ScrollController _controller =
@@ -25,16 +26,14 @@ class SelectScreen extends StatelessWidget {
       WidgetsBinding.instance!.addPostFrameCallback((_) {
         if (resultsService.searchingForResults) {
           context.loaderOverlay.show();
-          // print("Show loader");
         } else {
-          // sleep(Duration(seconds: 5));
           context.loaderOverlay.hide();
-          // print("Hide loader");
         }
       });
       _controller.addListener(() {
         if (_controller.position.atEdge && _controller.position.pixels != 0) {
-          if (resultsService.hasMoreResults && !resultsService.searchingForResults) {
+          if (resultsService.hasMoreResults &&
+              !resultsService.searchingForResults) {
             context.loaderOverlay.show();
             // Provider.of<ResultsService>(context, listen: false)
             //     .getMoreSearchResults();
@@ -48,67 +47,51 @@ class SelectScreen extends StatelessWidget {
           useDefaultLoading: false,
           overlayWidget: Center(
             child: SpinKitFadingCircle(
-              itemBuilder: (BuildContext context, int index) {
-                return DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: index.isEven
-                        ? Colors.blueAccent
-                        : Colors.lightBlueAccent,
-                  ),
-                );
-              },
+              itemBuilder: (BuildContext context, int index) => DecoratedBox(
+                decoration: BoxDecoration(
+                  color:
+                      index.isEven ? Colors.blueAccent : Colors.lightBlueAccent,
+                ),
+              ),
               size: 100.0,
             ),
           ),
           child: Center(
             child: Padding(
               padding: const EdgeInsets.all(4.0),
-              child:
-                  // (resultsService.searchingForResults)
-                  //     ? SpinKitFadingCube(
-                  //         itemBuilder: (BuildContext context, int index) {
-                  //           return DecoratedBox(
-                  //             decoration: BoxDecoration(
-                  //               color: index.isEven ? Colors.green : Colors.green,
-                  //             ),
-                  //           );
-                  //         },
-                  //       )
-                  //     :
-                  (resultsService.hasResults)
-                      ? Column(
-                          //crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                              const Text('Tap to select'),
-                              Expanded(
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.vertical,
-                                  controller: _controller,
-                                  child: Wrap(
-                                    direction: Axis.horizontal,
-                                    alignment: WrapAlignment.center,
-                                    runAlignment: WrapAlignment.spaceEvenly,
-                                    spacing: 0.0,
-                                    runSpacing: 0.0,
-                                    children: mapIndexed<Widget, MusicResult>(
-                                        resultsService.searchResults,
-                                        (index, item) => SelectableTile(
-                                              size: 100.0,
-                                          // image: item.image,
-                                              imageUrl: item.imageUrl,
-                                              label:
-                                              item.track + ((item.track == "") ? '' : '\n') +
-                                                  '${item.album} by ${item.artist}',
-                                              tooltip:
-                                                  'Album:${item.album}\nArtist:${item.artist}\nTrack:${item.track}',
-                                              onTap: () => resultsService
-                                                  .toggleResultSelected(index),
-                                              selected: item.selected,
-                                            )).toList(),
-                                  ),
-                                ),
-                              ),
-                            ])
+              child: (resultsService.hasResults)
+                  ? Column(children: [
+                      const Text('Tap to select'),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.vertical,
+                          controller: _controller,
+                          child: Wrap(
+                            direction: Axis.horizontal,
+                            alignment: WrapAlignment.center,
+                            runAlignment: WrapAlignment.spaceEvenly,
+                            spacing: 0.0,
+                            runSpacing: 0.0,
+                            children: mapIndexed<Widget, MusicResult>(
+                                resultsService.searchResults,
+                                (index, item) => SelectableTile(
+                                      size: 100.0,
+                                      imageUrl: item.imageUrl,
+                                      label: item.track +
+                                          ((item.track == "") ? '' : '\n') +
+                                          '${item.album} by ${item.artist}',
+                                      tooltip:
+                                          'Album:${item.album}\nArtist:${item.artist}\nTrack:${item.track}',
+                                      onTap: () => resultsService
+                                          .toggleResultSelected(index),
+                                      selected: item.selected,
+                                    )).toList(),
+                          ),
+                        ),
+                      ),
+                    ])
+                  : (resultsService.searchingForResults)
+                      ? const Text('')
                       : const Text('No results'),
             ),
           ),
@@ -116,7 +99,12 @@ class SelectScreen extends StatelessWidget {
         floatingActionButton: FloatingActionButton(
           onPressed: (() {
             if (resultsService.hasResults) {
-              playbackService.start();
+              if (rendererService.hasRenderer) {
+                playbackService.start();
+                data.tabController.animateTo(kPlayScreenIndex);
+              } else {
+                data.tabController.animateTo(kSpeakerScreenIndex);
+              }
             } else {
               Fluttertoast.showToast(msg: 'Nothing selected');
             }

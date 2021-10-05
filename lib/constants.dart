@@ -1,4 +1,4 @@
-const String kTitle = 'My Music Selector';
+const String kTitle = "Rod's Music Selector";
 
 const int kSearchScreenIndex = 0;
 const int kSelectScreenIndex = 1;

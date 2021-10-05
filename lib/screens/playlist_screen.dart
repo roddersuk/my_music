@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -11,28 +12,85 @@ class PlaylistScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer2<Data, PlaybackService>(
       builder: (context, data, playbackService, child) {
-        return Column(
-          children: [
-            Text('Playlist Screen ${playbackService.numberOfTracks} tracks'),
-            Expanded(
-              child: ListView.separated(
-                itemCount: playbackService.numberOfTracks,
-                itemBuilder: (context, i) {
-                  return Column(crossAxisAlignment: CrossAxisAlignment.start,
-                      // height: 50,
-                      children: [
-                        Text('Track: ${playbackService.playlist[i].track}'),
-                        Text('Album: ${playbackService.playlist[i].album}'),
-                        Text('Artist: ${playbackService.playlist[i].artist}'),
-                      ]);
-                },
-                separatorBuilder: (context, i) => const Divider(
-                  height: 15,
-                  thickness: 2,
+        return Padding(
+          padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Text('Playlist Screen ${playbackService.numberOfTracks} tracks'),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: playbackService.numberOfTracks,
+                  itemBuilder: (context, i) {
+                    return InkWell(
+                      onTap: () => playbackService.playTrack(i),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4.0, right: 4.0),
+                            child: CachedNetworkImage(
+                              width: 50.0,
+                              height: 50.0,
+                              fit: BoxFit.fill,
+                              imageUrl: playbackService.playlist[i].imageUrl,
+                              placeholder: (context, url) =>
+                                  const CircularProgressIndicator(),
+                              errorWidget: (context, url, error) =>
+                                  const Icon(Icons.error),
+                            ),
+                          ),
+                          Expanded(
+                            child:
+                                Column(crossAxisAlignment: CrossAxisAlignment.start,
+                                    // height: 50,
+                                    children: [
+                                  Row(
+                                    children: [
+                                      const Text(
+                                        'Track: ',
+                                        style:
+                                            TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(playbackService.playlist[i].track),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      const Text(
+                                        'Album: ',
+                                        style:
+                                            TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(playbackService.playlist[i].album),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      const Text(
+                                        'Artist: ',
+                                        style:
+                                            TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(playbackService.playlist[i].artist),
+                                    ],
+                                  ),
+                                ]),
+                          ),
+                          if (i == playbackService.currentTrackIndex)
+                            const Icon(Icons.music_note),
+                        ],
+                      ),
+                    );
+                  },
+                  separatorBuilder: (context, i) => const Divider(
+                    height: 15,
+                    thickness: 2,
+                  ),
                 ),
-              ),
-            )
-          ],
+              )
+            ],
+          ),
         );
       },
     );

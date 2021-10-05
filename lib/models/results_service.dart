@@ -87,6 +87,7 @@ class ResultsService with ChangeNotifier {
       required List<MusicResult> musicResults,
         type = kMusicItem,
       isPlaylist = false}) async {
+    print('Called addMusicResult');
     var unescape = HtmlUnescape();
     for (var item in resultsJson['item']) {
       var meta = item['meta'];

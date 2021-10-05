@@ -46,28 +46,14 @@ class RendererScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              // Align(
-              //   alignment: Alignment.bottomRight,
-              //   child: FloatingActionButton(
-              //     onPressed: (() {
-              //       if (resultsService.hasResults) {
-              //         playbackService.start();
-              //       } else {
-              //         Fluttertoast.showToast(msg: 'Nothing selected');
-              //         data.tabController.animateTo(kSelectScreenIndex);
-              //       }
-              //     }),
-              //     tooltip: 'Play',
-              //     child: Icon(Icons.play_arrow),
-              //   ),
-              // )
             ]),
           ),
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: (() {
-            if (resultsService.hasResults) {
+            if (resultsService.hasResults && rendererService.hasRenderer) {
               playbackService.start();
+              data.tabController.animateTo(kPlayScreenIndex);
             } else {
               Fluttertoast.showToast(msg: 'Nothing selected');
               data.tabController.animateTo(kSelectScreenIndex);
