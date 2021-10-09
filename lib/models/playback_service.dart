@@ -2,26 +2,29 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:my_music/components/log_mixin.dart';
 
+import '../constants.dart';
 import '../models/renderer_service.dart';
 import '../models/results_service.dart';
 import 'data.dart';
 
-class PlaybackService with ChangeNotifier {
+class PlaybackService with ChangeNotifier, LogMixin {
   PlaybackService(
       {required this.data,
       required this.resultsService,
       required this.rendererService});
 
-  Data data;
-  ResultsService resultsService;
-  RendererService rendererService;
+  final Data data;
+  final ResultsService resultsService;
+  final RendererService rendererService;
 
   final Playback _playback = Playback();
   final List<MusicResult> _playlist = [];
   bool _buildingPlaylist = false;
 
   void start() async {
+    log('Start playing');
     var renderer = rendererService.renderer;
     List<Future> futures = [];
     futures.add(_buildPlaylist());
@@ -31,7 +34,7 @@ class PlaybackService with ChangeNotifier {
     await Future.wait(futures).then((value) async {
       int index = 0;
       for (MusicResult item in _playlist) {
-        // print('Add ${item.track} on ${item.album} at index $index');
+        // log('Add ${item.track} on ${item.album} at index $index');
         await data.twonky
             .addBookmark(
               renderer: renderer,
@@ -39,22 +42,25 @@ class PlaybackService with ChangeNotifier {
               index: index,
             )
             .then(
-              (value) => print('Added ${item.track} value = $value'),
+              (value) => log('Added ${item.track} value = $value'),
             );
         index++;
       }
-      print('All added');
-    }).then((value) {
-      print('Start playback');
+      log('All tracks added to Twonky queue');
+    }).then((value) async {
+      log('Begin playback');
+      mute(false);
+      _playback.volume = double.parse(await data.twonky.getVolumePercent(renderer: renderer));
       _playback.state = PlaybackState.playing;
-      //mute();
       data.twonky.play(renderer: renderer);
       startPlaybackTimer();
-    });
+    }
+    );
     notifyListeners();
   }
 
   void pauseResume() {
+    log('Pause/Resume currently ${(_playback.state == PlaybackState.playing)?"playing":"paused/stopped"}');
     if (rendererService.hasRenderer) {
       var renderer = rendererService.renderer;
       switch (_playback.state) {
@@ -87,7 +93,7 @@ class PlaybackService with ChangeNotifier {
 
   bool nextTrack() {
     if (_playback.track < _playlist.length - 1 && rendererService.hasRenderer) {
-      // print('next track');
+      log('Play next track');
       _playback.track++;
       _playback.position = 0.0;
       _playback.duration = currentTrack.duration;
@@ -95,13 +101,13 @@ class PlaybackService with ChangeNotifier {
       notifyListeners();
       return true;
     } else {
-      // print('next track failed');
+      log('Play next track failed');
       return false;
     }
   }
 
   void stop() {
-    // print('stop playing');
+    log('Stop playing');
     if (rendererService.hasRenderer) {
       data.twonky.stop(renderer: rendererService.renderer);
       _playback.state = PlaybackState.stopped;
@@ -110,39 +116,40 @@ class PlaybackService with ChangeNotifier {
 
   bool previousTrack() {
     if (_playback.track > 0 && rendererService.hasRenderer) {
+      log('Play previous track');
       _playback.track--;
       _playback.position = 0.0;
       _playback.duration = currentTrack.duration;
       data.twonky.skipPrevious(renderer: rendererService.renderer);
-      // print('previous track');
       notifyListeners();
       return true;
     } else {
+      log('Play previous track failed');
       return false;
     }
   }
 
   bool playTrack(int track) {
     if (track >= 0 && track < _playlist.length && rendererService.hasRenderer) {
+      log('Play track $track');
       _playback.track = track;
       _playback.position = 0.0;
       _playback.duration = currentTrack.duration;
       data.twonky.setPlayindex(renderer: rendererService.renderer, index: track);
-      print('play track $track');
       notifyListeners();
       return true;
     } else {
+      log('Play track failed');
       return false;
     }
   }
 
-  void mute() {
-    // print('mute');
+  void mute(bool mute) {
     if (rendererService.hasRenderer) {
+      log('Mute playback $mute');
       var renderer = rendererService.renderer;
-      print(data.twonky.getMute(renderer: renderer));
-      data.twonky.setMute(renderer: renderer, mute: !isMuted);
-      isMuted = !isMuted;
+      data.twonky.setMute(renderer: renderer, mute: mute);
+      isMuted = mute;
     }
   }
 
@@ -163,32 +170,31 @@ class PlaybackService with ChangeNotifier {
               ? PlaybackState.playing
               : _playback.state;
 
-  double get playbackVolume => _playback.volume;
+  double get playbackVolume => _playback.volume / 100.0;
 
   void updateVolume(double newVolume) {
-    print('New volume $newVolume');
-    _playback.volume = newVolume;
+    log('Update volume to $newVolume');
+    _playback.volume = newVolume * 100.0;
     if (rendererService.hasRenderer) {
       data.twonky.setVolumePercent(
-          renderer: rendererService.renderer, volume: (_playback.volume * 100.0).toInt());
+          renderer: rendererService.renderer, volume: (_playback.volume).toInt());
     }
     notifyListeners();
   }
 
-  get isBuildingPlayist => _buildingPlaylist;
+  get isBuildingPlaylist => _buildingPlaylist;
 
   Future<void> _buildPlaylist() async {
-    print('_buildPlaylist called $_buildingPlaylist');
     if (!_buildingPlaylist) {
-      print('Building playlist');
+      log('Building playlist');
       _buildingPlaylist = true;
       _playlist.clear();
       if (resultsService.searchData.type == 'musicItem') {
-        print('music items');
+        log('Music items from selected tracks');
         for (int i in resultsService.selectedResults) {
           _playlist.add(resultsService.searchResults[i]);
           MusicResult sr = resultsService.searchResults[i];
-          print(
+          log(
               'Track: ${sr.track}, Album: ${sr.album}, Artist: ${sr.artist}, Duration: ${sr.duration}');
         }
         _buildingPlaylist = false;
@@ -197,28 +203,28 @@ class PlaybackService with ChangeNotifier {
         _playback.position = 0.0;
         _playback.state = PlaybackState.playing;
       } else {
-        print('music albums');
+        log('Music items from selected albums');
         List<Future> futures = [];
         for (int i in resultsService.selectedResults) {
-          print('result ${i}');
           MusicResult item = resultsService.searchResults[i];
           futures.add(resultsService
               .getResults(
                 query: data.twonky.queryString(
                   album: item.album,
                   artist: item.artist,
-                  type: 'musicItem',
+                  type: kMusicItem,
                 ),
                 start: 0,
                 count: item.childCount,
-              )
+                sort: 'upnp:originalTrackNumber=ascending',
+          )
               .then((resultsJson) => futures.add(resultsService.addMusicResults(
                   resultsJson: resultsJson,
                   musicResults: _playlist,
                   isPlaylist: true))));
         }
         await Future.wait(futures).then((value) {
-          print("after wait");
+          log('Playlist built');
           _buildingPlaylist = false;
           _playback.track = 0;
           _playback.duration = _playlist[0].duration;
@@ -230,10 +236,10 @@ class PlaybackService with ChangeNotifier {
       Fluttertoast.showToast(
           msg: 'Building previous selection\nPlease wait and try again.');
     }
-    print("Playlist built");
   }
 
   void startPlaybackTimer() {
+    log('Starting playback timer');
     Timer.periodic(const Duration(seconds: 1), (timer) {
       data.twonky
           .getPlayindex(
@@ -243,20 +249,15 @@ class PlaybackService with ChangeNotifier {
                   .then((state) {
                 List<String> p = playindex.split('|');
                 List<String> s = state.split('|');
-                // print('Playindex $playindex state $state');
                 _playback.state = PlaybackState.values[int.parse(s[0])];
                 _playback.track = int.parse(p[0]);
                 _playback.duration = int.parse(s[2]) ~/ 1000;
                 _playback.position =
                     (int.parse(s[1]).toDouble() / 1000.0) / _playback.duration;
-                // print(
-                //     'Track ${_playback.track}, Duration ${_playback.duration}, Position ${_playback.position}');
-                // print('Playback state ${_playback.state}');
-                // print('Playback position ${_playback.position}');
                 if ((_playback.state != PlaybackState.playing &&
                         _playback.state != PlaybackState.paused) ||
                     (_playback.position >= 0.999 && nextTrack() == false)) {
-                  print('timer cancelled!');
+                  log('Playback timer cancelled! state=${_playback.state} position=${_playback.position}');
                   timer.cancel();
                 }
 
@@ -303,6 +304,6 @@ class Playback {
   int duration = 0;
   double position = 0.0;
   PlaybackState state = PlaybackState.stopped;
-  double volume = 0.5;
+  double volume = 50.0;
   bool muted = false;
 }

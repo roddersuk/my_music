@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:my_music/components/scroll_behaviour.dart';
 import 'package:provider/provider.dart';
 import 'package:loader_overlay/loader_overlay.dart';
 
@@ -27,7 +28,15 @@ class SelectScreen extends StatelessWidget {
         if (resultsService.searchingForResults) {
           context.loaderOverlay.show();
         } else {
-          context.loaderOverlay.hide();
+          Future.delayed(const Duration(seconds: 1), () {
+            if (resultsService.hasMoreResults &&
+                _controller.position.maxScrollExtent <= 0.1) {
+              resultsService.getMoreSearchResults();
+            } else {
+              context.loaderOverlay.hide();
+            }
+            // print(_controller.position.maxScrollExtent);
+          });
         }
       });
       _controller.addListener(() {
@@ -35,8 +44,6 @@ class SelectScreen extends StatelessWidget {
           if (resultsService.hasMoreResults &&
               !resultsService.searchingForResults) {
             context.loaderOverlay.show();
-            // Provider.of<ResultsService>(context, listen: false)
-            //     .getMoreSearchResults();
             resultsService.getMoreSearchResults();
           }
         }
@@ -49,8 +56,7 @@ class SelectScreen extends StatelessWidget {
             child: SpinKitFadingCircle(
               itemBuilder: (BuildContext context, int index) => DecoratedBox(
                 decoration: BoxDecoration(
-                  color:
-                      index.isEven ? Colors.blueAccent : Colors.lightBlueAccent,
+                  color: index.isEven ? kEvenColor : kOddColor,
                 ),
               ),
               size: 100.0,
@@ -63,29 +69,34 @@ class SelectScreen extends StatelessWidget {
                   ? Column(children: [
                       const Text('Tap to select'),
                       Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.vertical,
-                          controller: _controller,
-                          child: Wrap(
-                            direction: Axis.horizontal,
-                            alignment: WrapAlignment.center,
-                            runAlignment: WrapAlignment.spaceEvenly,
-                            spacing: 0.0,
-                            runSpacing: 0.0,
-                            children: mapIndexed<Widget, MusicResult>(
+                        child: ScrollConfiguration(
+                          behavior: MyCustomScrollBehavior(),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.vertical,
+                            controller: _controller,
+                            // physics: AlwaysScrollableScrollPhysics(),
+                            child: Wrap(
+                              direction: Axis.horizontal,
+                              alignment: WrapAlignment.start,
+                              runAlignment: WrapAlignment.spaceEvenly,
+                              spacing: 0.0,
+                              runSpacing: 0.0,
+                              children: mapIndexed<Widget, MusicResult>(
                                 resultsService.searchResults,
                                 (index, item) => SelectableTile(
-                                      size: 100.0,
-                                      imageUrl: item.imageUrl,
-                                      label: item.track +
-                                          ((item.track == "") ? '' : '\n') +
-                                          '${item.album} by ${item.artist}',
-                                      tooltip:
-                                          'Album:${item.album}\nArtist:${item.artist}\nTrack:${item.track}',
-                                      onTap: () => resultsService
-                                          .toggleResultSelected(index),
-                                      selected: item.selected,
-                                    )).toList(),
+                                  size: 100.0,
+                                  imageUrl: item.imageUrl,
+                                  label: item.track +
+                                      ((item.track == "") ? '' : '\n') +
+                                      '${item.album} by ${item.artist}',
+                                  tooltip:
+                                      'Album:${item.album}\nArtist:${item.artist}\nTrack:${item.track}',
+                                  onTap: () => resultsService
+                                      .toggleResultSelected(index),
+                                  selected: item.selected,
+                                ),
+                              ).toList(),
+                            ),
                           ),
                         ),
                       ),

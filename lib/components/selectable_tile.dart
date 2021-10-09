@@ -6,7 +6,6 @@ class SelectableTile extends StatelessWidget {
   const SelectableTile(
       {Key? key,
       this.size = 80.0,
-      // required this.image,
       required this.imageUrl,
       required this.label,
       this.tooltip = '',
@@ -15,7 +14,6 @@ class SelectableTile extends StatelessWidget {
       : super(key: key);
   final double size;
 
-  // final ImageProvider image;
   final String imageUrl;
   final String label;
   final String tooltip;
@@ -46,11 +44,6 @@ class SelectableTile extends StatelessWidget {
                 )
               else
                 Image(image: AssetImage(imageUrl)),
-              // Image(
-              //   image: image,
-              //   width: size,
-              //   height: size,
-              // ),
               Text(
                 label,
                 overflow: TextOverflow.visible,

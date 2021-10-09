@@ -34,6 +34,7 @@ class Pages {
       screen: const PlaylistScreen(),
     ),
   ];
+
   int get length => pages.length;
 }
 

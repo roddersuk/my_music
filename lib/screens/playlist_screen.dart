@@ -14,10 +14,9 @@ class PlaylistScreen extends StatelessWidget {
       builder: (context, data, playbackService, child) {
         return Padding(
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
-          child: Column(
+          child: (playbackService.hasPlaylist) ? Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Text('Playlist Screen ${playbackService.numberOfTracks} tracks'),
               Expanded(
                 child: ListView.separated(
                   itemCount: playbackService.numberOfTracks,
@@ -28,7 +27,8 @@ class PlaylistScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           Padding(
-                            padding: const EdgeInsets.only(left: 4.0, right: 4.0),
+                            padding:
+                                const EdgeInsets.only(left: 4.0, right: 4.0),
                             child: CachedNetworkImage(
                               width: 50.0,
                               height: 50.0,
@@ -41,16 +41,16 @@ class PlaylistScreen extends StatelessWidget {
                             ),
                           ),
                           Expanded(
-                            child:
-                                Column(crossAxisAlignment: CrossAxisAlignment.start,
-                                    // height: 50,
-                                    children: [
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                // height: 50,
+                                children: [
                                   Row(
                                     children: [
                                       const Text(
                                         'Track: ',
-                                        style:
-                                            TextStyle(fontWeight: FontWeight.bold),
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold),
                                       ),
                                       Text(playbackService.playlist[i].track),
                                     ],
@@ -59,8 +59,8 @@ class PlaylistScreen extends StatelessWidget {
                                     children: [
                                       const Text(
                                         'Album: ',
-                                        style:
-                                            TextStyle(fontWeight: FontWeight.bold),
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold),
                                       ),
                                       Text(playbackService.playlist[i].album),
                                     ],
@@ -69,8 +69,8 @@ class PlaylistScreen extends StatelessWidget {
                                     children: [
                                       const Text(
                                         'Artist: ',
-                                        style:
-                                            TextStyle(fontWeight: FontWeight.bold),
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold),
                                       ),
                                       Text(playbackService.playlist[i].artist),
                                     ],
@@ -78,7 +78,8 @@ class PlaylistScreen extends StatelessWidget {
                                 ]),
                           ),
                           if (i == playbackService.currentTrackIndex)
-                            const Icon(Icons.music_note),
+                            const Image(image: AssetImage('images/sound.gif'), height: 40.0, width: 40.0,),
+                            // const Icon(Icons.music_note),
                         ],
                       ),
                     );
@@ -90,7 +91,8 @@ class PlaylistScreen extends StatelessWidget {
                 ),
               )
             ],
-          ),
+          )
+          : const Text('No playlist - choose a speaker')
         );
       },
     );

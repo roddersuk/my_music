@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:my_music/components/log_mixin.dart';
 import 'package:yamaha_yxc/yamaha_yxc.dart';
 
 import '../tools/utilities.dart';
 import 'data.dart';
 
-class RendererService with ChangeNotifier {
+class RendererService with ChangeNotifier, LogMixin {
   RendererService({required this.data});
+
   Data data;
 
   List<Renderer> renderers = [];
@@ -23,59 +25,72 @@ class RendererService with ChangeNotifier {
     } else {
       _rendererList.remove(index);
     }
+    log('Selected results: $_rendererList');
     notifyListeners();
   }
 
   Future<void> initialise() async {
-    print('Initialising renderer ${selectedRenderer.id}');
+    log('Initialising renderer ${selectedRenderer.id}');
     String rBookmark = selectedRenderer.id;
     await data.twonky.stop(renderer: rBookmark).then(
           (value) => data.twonky.clear(renderer: rBookmark).then((value) async {
-            print('Twonky queue stopped and cleared');
+            await data.twonky.setMute(renderer: renderer, mute: true);
+            log('Twonky queue stopped and cleared');
             if (selectedRenderer.isMusiccast) {
-              print('renderer is musiccast');
+              log('Renderer is musiccast');
               YamahaYXC yxc = YamahaYXC(selectedRenderer.baseUrl);
-              await yxc.zone
-                  .setPower(
-                    zone: ZoneType.main,
-                    power: PowerStatus.on,
-                  )
-                  .then((value) =>
-                      justWait(milliseconds: 1000)) // avoid Guarded error?
-                  .then(
-                    (value) => yxc.network
-                        .setPlayback(
-                          playback: PlaybackStatus.stop,
-                        )
-                        .then(
-                          (value) => yxc.zone
-                              .setMute(
-                                zone: ZoneType.main,
-                                enable: true,
-                              )
-                              .then(
-                                (value) => yxc.zone
-                                    .prepareInputChange(
-                                      zone: ZoneType.main,
-                                      input: 'server',
-                                    )
-                                    .then(
-                                      (value) => yxc.zone.setInput(
-                                        zone: ZoneType.main,
-                                        input: 'server',
-                                        mode: 'autoplay_disabled',
-                                      ),
-                                    ),
-                              ),
-                        ),
-                  );
+              try {
+                await yxc.zone
+                    .setPower(
+                  zone: ZoneType.main,
+                  power: PowerStatus.on,
+                )
+                    .then((value) =>
+                    justWait(milliseconds: 1000)) // avoid Guarded error?
+                    .then(
+                      (value) =>
+                      yxc.network
+                          .setPlayback(
+                        playback: PlaybackStatus.stop,
+                      )
+                          .then(
+                            (value) =>
+                            yxc.zone
+                                .setMute(
+                              zone: ZoneType.main,
+                              enable: true,
+                            )
+                                .then(
+                                  (value) =>
+                                  yxc.zone
+                                      .prepareInputChange(
+                                    zone: ZoneType.main,
+                                    input: 'server',
+                                  )
+                                      .then(
+                                        (value) =>
+                                        yxc.zone.setInput(
+                                          zone: ZoneType.main,
+                                          input: 'server',
+                                          mode: 'autoplay_disabled',
+                                        ),
+                                  ),
+                            ),
+                      ),
+                );
+              } catch(e) {
+                log('Musiccast failed with $e');
+              }
             }
+            log('Renderer initialised');
           }),
         );
   }
 
   Future skipMusiccastQueue() async {
+    log('skipMusiccastQueue');
     if (selectedRenderer.isMusiccast) {
+      log('Skipping Musiccast queue');
       YamahaYXC yxc = YamahaYXC(selectedRenderer.baseUrl);
       return await yxc.network
           .getPlayQueue(input: 'server', size: 1)
@@ -83,22 +98,19 @@ class RendererService with ChangeNotifier {
         num maxLine = pq['max_line'];
         if (maxLine > 0) {
           num tracksToSkip = maxLine - pq['playing_index'];
-          print('Skipping $tracksToSkip tracks');
+          log('Skipping $tracksToSkip tracks');
           List<Future> futures = [];
           for (int i = 0; i < tracksToSkip; i++) {
             futures.add(yxc.network
                 .setPlayback(
                   playback: PlaybackStatus.next,
                 )
-                .then((value) =>
-                    justWait(milliseconds: 1000)));
+                .then((value) => justWait(milliseconds: 1000)));
           } // avoid Guarded error?
           Future.wait(futures).then(
-              //Change enable to false to unmute
               (value) => yxc.zone.setMute(zone: ZoneType.main, enable: false));
         } else {
-          print('No tracks to skip');
-          //Change enable to false to unmute
+          log('No tracks to skip');
           await yxc.zone.setMute(zone: ZoneType.main, enable: false);
         }
       });
@@ -130,12 +142,8 @@ class RendererService with ChangeNotifier {
           title: item['title'],
           name: item['renderer']['friendlyName'],
           model: item['renderer']['modelDescription'],
-          // image: (musiccast)
-          //     ? AssetImage('images/musiccast.png')
-          //     : AssetImage('images/music_player.png'),
-          imageUrl: (musiccast)
-              ? 'images/musiccast.png'
-              : 'images/music_player.png',
+          imageUrl:
+              (musiccast) ? 'images/musiccast.png' : 'images/music_player.png',
           isMusiccast: musiccast,
         ));
       }
@@ -151,23 +159,22 @@ class Renderer {
     required this.baseUrl,
     this.name = '',
     this.model = '',
-    // required this.image,
     required this.imageUrl,
     this.selected = false,
     this.isMusiccast = false,
   });
+
   String id;
   String title;
   String baseUrl;
   String name;
   String model;
-  // ImageProvider image;
+
   String imageUrl;
   bool selected;
   bool isMusiccast;
 
   void toggleSelected() {
     selected = !selected;
-    print(((selected) ? '' : 'De-') + 'Selected speaker $name');
   }
 }

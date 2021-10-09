@@ -3,11 +3,12 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:html_unescape/html_unescape.dart';
+import 'package:my_music/components/log_mixin.dart';
 
 import '../constants.dart';
 import 'data.dart';
 
-class ResultsService with ChangeNotifier {
+class ResultsService with ChangeNotifier, LogMixin {
   ResultsService({required this.data});
 
   Data data;
@@ -16,6 +17,7 @@ class ResultsService with ChangeNotifier {
   List<int> selectedResults = [];
   int resultsTotalCount = 0;
   bool searchingForResults = false;
+  late String query;
 
   void toggleResultSelected(index) {
     searchResults[index].toggleSelected();
@@ -24,7 +26,7 @@ class ResultsService with ChangeNotifier {
     } else {
       selectedResults.remove(index);
     }
-    print('Selected results: $selectedResults');
+    log('Selected results: $selectedResults');
     notifyListeners();
   }
 
@@ -39,8 +41,7 @@ class ResultsService with ChangeNotifier {
   void getMoreSearchResults() {
     int currentResults = searchResults.length;
     if (!searchingForResults && currentResults < resultsTotalCount) {
-      print(
-          'Getting results $currentResults to ${currentResults + kResultsBatchSize}');
+      log('Getting more results $currentResults to ${currentResults + kResultsBatchSize}');
       getSearchResults(start: currentResults);
     } else {
       searchingForResults = false;
@@ -48,46 +49,50 @@ class ResultsService with ChangeNotifier {
   }
 
   Future<dynamic> getResults(
-      {required String query, int start = 0, int count = kResultsBatchSize}) {
+      {required String query, required int start, required int count, String? sort}) {
     return data.twonky.search(
       server: data.twonky.server['UDN'],
       query: query,
       start: start,
       count: count,
+      sort: sort,
     );
   }
 
-  void getSearchResults({int start = 0}) {
+  void getSearchResults({int start = 0, int count = kResultsBatchSize}) {
     searchingForResults = true;
-    String query = data.twonky.queryString(
-      artist: searchData.artist,
-      album: searchData.album,
-      track: searchData.track,
-      genre: searchData.genre,
-      year: searchData.year,
-      type: searchData.type,
-    );
-    print(query);
-    getResults(query: query, start: start).then((resultsJson) {
+    // query = data.twonky.queryString(
+    //   artist: searchData.artist,
+    //   album: searchData.album,
+    //   track: searchData.track,
+    //   genre: searchData.genre,
+    //   year: searchData.year,
+    //   type: searchData.type,
+    // );
+    log('Searching with $query');
+    getResults(query: query, start: start, count: count).then((resultsJson) {
       if (start == 0) {
         searchResults.clear();
         selectedResults.clear();
       }
       resultsTotalCount = int.parse(resultsJson['childCount']);
       if (resultsTotalCount > 0) {
-        addMusicResults(resultsJson: resultsJson, musicResults: searchResults, type: searchData.type);
+        addMusicResults(
+            resultsJson: resultsJson,
+            musicResults: searchResults,
+            type: searchData.type);
       }
       searchingForResults = false;
       notifyListeners();
     });
   }
 
-  Future<void> addMusicResults (
+  Future<void> addMusicResults(
       {required var resultsJson,
       required List<MusicResult> musicResults,
-        type = kMusicItem,
+      type = kMusicItem,
       isPlaylist = false}) async {
-    print('Called addMusicResult');
+    log('Called addMusicResult');
     var unescape = HtmlUnescape();
     for (var item in resultsJson['item']) {
       var meta = item['meta'];
@@ -100,23 +105,19 @@ class ResultsService with ChangeNotifier {
       int childCount =
           (meta['childCount'] != null) ? int.parse(meta['childCount']) : 0;
       String imageUrl = unescape.convert(meta['upnp:albumArtURI']);
-      // print(imageUrl);
       MusicResult musicResult = MusicResult(
           id: item['bookmark'],
           artist: unescape.convert(meta['upnp:artist']),
           album: unescape.convert(meta['upnp:album']),
           track: (type == kMusicItem) ? unescape.convert(item['title']) : "",
-//          image: NetworkImage(unescape.convert(meta['upnp:albumArtURI'])),
           imageUrl: imageUrl,
           childCount: childCount,
           duration: duration);
       if (isPlaylist) {
-        print(
-            'Adding ${unescape.convert(item['title'])} from ${unescape.convert(
-                meta['upnp:album'])} by ${unescape.convert(
-                meta['upnp:artist'])} duration $duration');
+        log('Adding to playlist ${unescape.convert(item['title'])} from ${unescape.convert(meta['upnp:album'])} by ${unescape.convert(meta['upnp:artist'])} duration $duration');
         musicResults.add(musicResult);
       } else {
+        log('Adding to results $musicResult');
         searchResults.add(musicResult);
       }
     }
@@ -128,11 +129,21 @@ class ResultsService with ChangeNotifier {
     searchData.track = track;
     searchData.genre = genre;
     searchData.year = year;
-    if (album != '' && track == '') searchData.type = kMusicAlbum;
+    searchData.type = (album != '' && track == '') ? kMusicAlbum : kMusicItem;
 
     bool valid =
         artist != '' || album != '' || track != '' || genre != '' || year > 0;
-    if (valid) notifyListeners();
+    if (valid) {
+      query = data.twonky.queryString(
+        artist: searchData.artist,
+        album: searchData.album,
+        track: searchData.track,
+        genre: searchData.genre,
+        year: searchData.year,
+        type: searchData.type,
+      );
+      notifyListeners();
+    }
     return valid;
   }
 }
@@ -142,17 +153,16 @@ class MusicResult {
     required this.id,
     required this.artist,
     required this.album,
-    // required this.image,
     required this.imageUrl,
     this.track = '',
     this.duration = 0,
     this.selected = false,
     this.childCount = 0,
   });
+
   String id;
   String artist;
   String album;
- // ImageProvider image;
   String imageUrl;
   String track;
   int duration;
@@ -160,7 +170,6 @@ class MusicResult {
   int childCount;
 
   void toggleSelected() {
-    // print('in toggleSelected for $album: $selected changed to  ${!selected}');
     selected = !selected;
   }
 }

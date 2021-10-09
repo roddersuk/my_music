@@ -32,17 +32,17 @@ class RendererScreen extends StatelessWidget {
                     spacing: 0.0,
                     runSpacing: 0.0,
                     children: mapIndexed<Widget, Renderer>(
-                        rendererService.renderers,
-                        (index, item) => SelectableTile(
-                              size: 100.0,
-                              // image: item.image,
-                              imageUrl: item.imageUrl,
-                              label: item.title,
-                              tooltip: '${item.name} ${item.model}',
-                              onTap: () =>
-                                  rendererService.toggleRendererSelected(index),
-                              selected: item.selected,
-                            )).toList(),
+                      rendererService.renderers,
+                      (index, item) => SelectableTile(
+                        size: 100.0,
+                        imageUrl: item.imageUrl,
+                        label: item.title,
+                        tooltip: '${item.name} ${item.model}',
+                        onTap: () =>
+                            rendererService.toggleRendererSelected(index),
+                        selected: item.selected,
+                      ),
+                    ).toList(),
                   ),
                 ),
               ),

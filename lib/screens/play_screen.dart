@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:provider/provider.dart';
 
+import '../constants.dart';
 import '../models/playback_service.dart';
 
 class PlayScreen extends StatelessWidget {
@@ -14,14 +15,12 @@ class PlayScreen extends StatelessWidget {
         builder: (context, playbackService, child) {
       return Scaffold(
         body: Center(
-          child: (playbackService.isBuildingPlayist)
+          child: (playbackService.isBuildingPlaylist)
               ? SpinKitFadingCircle(
                   itemBuilder: (BuildContext context, int index) =>
                       DecoratedBox(
                     decoration: BoxDecoration(
-                      color: index.isEven
-                          ? Colors.blueAccent
-                          : Colors.lightBlueAccent,
+                      color: index.isEven ? kEvenColor : kOddColor,
                     ),
                   ),
                   size: 100.0,
@@ -52,7 +51,8 @@ class PlayScreen extends StatelessWidget {
                           style: const TextStyle(fontSize: 20),
                         ),
                         if (playbackService.currentTrack.track != '')
-                          Text('${playbackService.currentTrack.artist} - ${playbackService.currentTrack.album}'),
+                          Text(
+                              '${playbackService.currentTrack.artist} - ${playbackService.currentTrack.album}'),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -60,7 +60,7 @@ class PlayScreen extends StatelessWidget {
                               icon: Icon((playbackService.isMuted)
                                   ? Icons.volume_up
                                   : Icons.volume_off),
-                              onPressed: () => playbackService.mute(),
+                              onPressed: () => playbackService.mute(!playbackService.isMuted),
                             ),
                             IconButton(
                               icon: const Icon(Icons.skip_previous),
@@ -91,7 +91,7 @@ class PlayScreen extends StatelessWidget {
                         Slider(
                           value: playbackService.playbackVolume,
                           onChanged: (newVolume) =>
-                            playbackService.updateVolume(newVolume),
+                              playbackService.updateVolume(newVolume),
                           divisions: 100,
                           label: 'Volume',
                         ),
@@ -129,7 +129,7 @@ class PlayScreen extends StatelessWidget {
                         ),
                       ],
                     )
-                  : const Text('No playlist'),
+                  : const Text('No playlist - choose a speaker'),
         ),
       );
     });

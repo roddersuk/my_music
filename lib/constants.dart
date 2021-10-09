@@ -1,3 +1,7 @@
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
+
 const String kTitle = "Rod's Music Selector";
 
 const int kSearchScreenIndex = 0;
@@ -6,7 +10,7 @@ const int kSpeakerScreenIndex = 2;
 const int kPlayScreenIndex = 3;
 const int kPlaylistScreenIndex = 4;
 
-const int kResultsBatchSize = 12;
+const int kResultsBatchSize = 10;
 
 const String kTwonkyHostname = '192.168.1.107';
 const int kTwonkyPort = 9000;
@@ -14,3 +18,5 @@ const int kTwonkyPort = 9000;
 const String kMusicItem = 'musicItem';
 const String kMusicAlbum = 'musicAlbum';
 
+const Color kEvenColor = Colors.blueAccent;
+const Color kOddColor = Colors.lightBlueAccent;

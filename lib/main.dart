@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_music/components/log_mixin.dart';
 import 'package:provider/provider.dart';
 
 import 'constants.dart';
@@ -53,7 +54,7 @@ class MyStatefulWidget extends StatefulWidget {
 /// This is the private State class that goes with MyStatefulWidget.
 /// AnimationControllers can be created with `vsync: this` because of TickerProviderStateMixin.
 class _MyStatefulWidgetState extends State<MyStatefulWidget>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, LogMixin {
   late TabController _tabController;
   final Pages _pages = Pages();
   final List<Tab> _tabs = [];
@@ -90,7 +91,7 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget>
         title: const Center(child: Text(kTitle)),
         actions: [
           PopupMenuButton(onSelected: (choice) {
-            print(choice);
+            log('Selected popup menu $choice');
           }, itemBuilder: (context) {
             return {'Reset', 'Settings'}.map((choice) {
               return PopupMenuItem<String>(

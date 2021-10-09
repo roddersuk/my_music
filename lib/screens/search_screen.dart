@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -23,81 +24,81 @@ class SearchScreen extends StatelessWidget {
       return Scaffold(
         body: Padding(
           padding: const EdgeInsets.all(16.0),
-            child: SingleChildScrollView(
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    const Image(
-                      image: AssetImage('images/twonky_server.png'),
-                      width: 60.0,
-                      height: 60.0,
+          child: SingleChildScrollView(
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  const Image(
+                    image: AssetImage('images/twonky_server.png'),
+                    width: 60.0,
+                    height: 60.0,
+                  ),
+                  const Text('Enter the search criteria'),
+                  const Text(
+                      'The results will match items that contain the text and will be be ANDed together'),
+                  TextField(
+                    controller: _artistController,
+                    decoration: const InputDecoration(
+                      labelText: 'Artist',
+                      hintText: 'Enter an artist name',
                     ),
-                    const Text('Enter the search criteria'),
-                    const Text(
-                        'The results will match items that contain the text and will be be ANDed together'),
-                    TextField(
-                      controller: _artistController,
-                      decoration: const InputDecoration(
-                        labelText: 'Artist',
-                        hintText: 'Enter an artist name',
-                      ),
+                  ),
+                  TextField(
+                    controller: _albumController,
+                    decoration: const InputDecoration(
+                      labelText: 'Album',
+                      hintText: 'Enter an album title',
                     ),
-                    TextField(
-                      controller: _albumController,
-                      decoration: const InputDecoration(
-                        labelText: 'Album',
-                        hintText: 'Enter an album title',
-                      ),
+                  ),
+                  TextField(
+                    controller: _trackController,
+                    decoration: const InputDecoration(
+                      labelText: 'Track',
+                      hintText: 'Enter the name of a track',
                     ),
-                    TextField(
-                      controller: _trackController,
-                      decoration: const InputDecoration(
-                        labelText: 'Track',
-                        hintText: 'Enter the name of a track',
-                      ),
+                  ),
+                  TextField(
+                    controller: _genreController,
+                    decoration: const InputDecoration(
+                      labelText: 'Genre',
+                      hintText: 'Enter a genre',
                     ),
-                    TextField(
-                      controller: _genreController,
-                      decoration: const InputDecoration(
-                        labelText: 'Genre',
-                        hintText: 'Enter a genre',
-                      ),
+                  ),
+                  TextField(
+                    controller: _yearController,
+                    decoration: const InputDecoration(
+                      labelText: 'Year',
+                      hintText: 'Enter a year',
                     ),
-                    TextField(
-                      controller: _yearController,
-                      decoration: const InputDecoration(
-                        labelText: 'Year',
-                        hintText: 'Enter a year',
-                      ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9]'))
-                      ],
-                    ),
-                    ]),
-            ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9]'))
+                    ],
+                  ),
+                ]),
+          ),
         ),
-            floatingActionButton: FloatingActionButton(
-              onPressed: (() {
-                FocusScope.of(context).unfocus();
-                if (data.twonky.initialised) {
-                  if (resultsService.setSearchData(
-                      artist: _artistController.text,
-                      album: _albumController.text,
-                      track: _trackController.text,
-                      genre: _genreController.text,
-                      year: int.parse('0${_yearController.text}'))) {
-                    resultsService.getSearchResults();
-                    data.tabController.animateTo(kSelectScreenIndex);
-                  } else {
-                    Fluttertoast.showToast(msg: 'No search criteria');
-                  }
-                }
-              }),
-              tooltip: 'Search for music',
-              child: const Icon(Icons.search),
-            ),
-        );
+        floatingActionButton: FloatingActionButton(
+          onPressed: (() {
+            FocusScope.of(context).unfocus();
+            if (data.twonky.initialised) {
+              if (resultsService.setSearchData(
+                  artist: _artistController.text,
+                  album: _albumController.text,
+                  track: _trackController.text,
+                  genre: _genreController.text,
+                  year: int.parse('0${_yearController.text}'))) {
+                resultsService.getSearchResults();
+                data.tabController.animateTo(kSelectScreenIndex);
+              } else {
+                Fluttertoast.showToast(msg: 'No search criteria');
+              }
+            }
+          }),
+          tooltip: 'Search for music',
+          child: const Icon(Icons.search),
+        ),
+      );
     });
   }
 }
