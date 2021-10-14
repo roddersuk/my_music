@@ -41,7 +41,8 @@ class ResultsService with ChangeNotifier, LogMixin {
   void getMoreSearchResults() {
     int currentResults = searchResults.length;
     if (!searchingForResults && currentResults < resultsTotalCount) {
-      log('Getting more results $currentResults to ${currentResults + kResultsBatchSize}');
+      log('Getting more results $currentResults to ${currentResults +
+          kResultsBatchSize}');
       getSearchResults(start: currentResults);
     } else {
       searchingForResults = false;
@@ -61,14 +62,6 @@ class ResultsService with ChangeNotifier, LogMixin {
 
   void getSearchResults({int start = 0, int count = kResultsBatchSize}) {
     searchingForResults = true;
-    // query = data.twonky.queryString(
-    //   artist: searchData.artist,
-    //   album: searchData.album,
-    //   track: searchData.track,
-    //   genre: searchData.genre,
-    //   year: searchData.year,
-    //   type: searchData.type,
-    // );
     log('Searching with $query');
     getResults(query: query, start: start, count: count).then((resultsJson) {
       if (start == 0) {
@@ -87,11 +80,10 @@ class ResultsService with ChangeNotifier, LogMixin {
     });
   }
 
-  Future<void> addMusicResults(
-      {required var resultsJson,
-      required List<MusicResult> musicResults,
-      type = kMusicItem,
-      isPlaylist = false}) async {
+  Future<void> addMusicResults({required var resultsJson,
+    required List<MusicResult> musicResults,
+    type = kMusicItem,
+    isPlaylist = false}) async {
     log('Called addMusicResult');
     var unescape = HtmlUnescape();
     for (var item in resultsJson['item']) {
@@ -103,7 +95,7 @@ class ResultsService with ChangeNotifier, LogMixin {
             int.parse(x[0]) * 3600 + int.parse(x[1]) * 60 + int.parse(x[2]);
       }
       int childCount =
-          (meta['childCount'] != null) ? int.parse(meta['childCount']) : 0;
+      (meta['childCount'] != null) ? int.parse(meta['childCount']) : 0;
       String imageUrl = unescape.convert(meta['upnp:albumArtURI']);
       MusicResult musicResult = MusicResult(
           id: item['bookmark'],
@@ -114,7 +106,10 @@ class ResultsService with ChangeNotifier, LogMixin {
           childCount: childCount,
           duration: duration);
       if (isPlaylist) {
-        log('Adding to playlist ${unescape.convert(item['title'])} from ${unescape.convert(meta['upnp:album'])} by ${unescape.convert(meta['upnp:artist'])} duration $duration');
+        log('Adding to playlist ${unescape.convert(
+            item['title'])} from ${unescape.convert(
+            meta['upnp:album'])} by ${unescape.convert(
+            meta['upnp:artist'])} duration $duration');
         musicResults.add(musicResult);
       } else {
         log('Adding to results $musicResult');
@@ -126,18 +121,19 @@ class ResultsService with ChangeNotifier, LogMixin {
   bool setSearchData({artist, album, track, genre, year}) {
     searchData.artist = artist;
     searchData.album = album;
-    searchData.track = track;
+     searchData.track = track;
     searchData.genre = genre;
     searchData.year = year;
-    searchData.type = (album != '' && track == '') ? kMusicAlbum : kMusicItem;
-
+    searchData.type = (track == '') ? kMusicAlbum : kMusicItem;
     bool valid =
         artist != '' || album != '' || track != '' || genre != '' || year > 0;
     if (valid) {
       query = data.twonky.queryString(
         artist: searchData.artist,
         album: searchData.album,
-        track: searchData.track,
+        // If track is set to '*' get all track for the other matching criteria
+        // e.g. All tracks for albums matching <album>
+        track: (track == '*') ? '' : searchData.track,
         genre: searchData.genre,
         year: searchData.year,
         type: searchData.type,
@@ -145,6 +141,11 @@ class ResultsService with ChangeNotifier, LogMixin {
       notifyListeners();
     }
     return valid;
+  }
+
+  void resetSearchData() {
+    searchData.reset();
+    notifyListeners();
   }
 }
 
@@ -172,6 +173,11 @@ class MusicResult {
   void toggleSelected() {
     selected = !selected;
   }
+
+  @override
+  String toString() {
+    return ('Artist: $artist, Album: $album, Track: $track');
+  }
 }
 
 class SearchData {
@@ -181,4 +187,14 @@ class SearchData {
   String genre = '';
   String type = kMusicItem;
   int year = 0;
+
+  void reset() {
+    artist = '';
+    album = '';
+    track = '';
+    genre = '';
+    type = kMusicItem;
+    year = 0;
+  }
+
 }

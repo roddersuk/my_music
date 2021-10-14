@@ -21,31 +21,37 @@ class SelectScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var loaderOverlay = context.loaderOverlay;
+
     return Consumer4<Data, ResultsService, RendererService, PlaybackService>(
         builder: (context, data, resultsService, rendererService,
             playbackService, child) {
+
       WidgetsBinding.instance!.addPostFrameCallback((_) {
+        // Need to preserve the loader overlay to avoid invalid ancestor error
+        // loaderOverlay = context.loaderOverlay;
         if (resultsService.searchingForResults) {
-          context.loaderOverlay.show();
+          loaderOverlay.show();
         } else {
-          Future.delayed(const Duration(seconds: 1), () {
+          // Delay needed because position not set until this callback returns
+          Future.delayed(const Duration(milliseconds: 100), () {
             if (resultsService.hasMoreResults &&
                 _controller.position.maxScrollExtent <= 0.1) {
               resultsService.getMoreSearchResults();
             } else {
-              context.loaderOverlay.hide();
+              loaderOverlay.hide();
             }
-            // print(_controller.position.maxScrollExtent);
           });
         }
       });
+
       _controller.addListener(() {
         if (_controller.position.atEdge && _controller.position.pixels != 0) {
-          if (resultsService.hasMoreResults &&
-              !resultsService.searchingForResults) {
-            context.loaderOverlay.show();
-            resultsService.getMoreSearchResults();
-          }
+            if (resultsService.hasMoreResults &&
+                !resultsService.searchingForResults) {
+              loaderOverlay.show();
+              resultsService.getMoreSearchResults();
+            }
         }
       });
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:my_music/components/log_mixin.dart';
+import 'package:my_music/screens/settings_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'constants.dart';
@@ -9,7 +11,11 @@ import 'models/renderer_service.dart';
 import 'models/results_service.dart';
 import 'models/screens.dart';
 
-void main() => runApp(const MyApp());
+void main() => initSettings().then((_) => runApp(const MyApp()));
+
+Future<void> initSettings() async {
+  await Settings.init();
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -63,7 +69,7 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget>
   @override
   void initState() {
     super.initState();
-
+    //Settings.setValue(kTwonkyPortKey, kTwonkyPort.toString());
     _tabController = TabController(length: _pages.length, vsync: this);
     Provider.of<Data>(context, listen: false).setTabController(_tabController);
     Provider.of<Data>(context, listen: false).getServer();
@@ -92,8 +98,20 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget>
         actions: [
           PopupMenuButton(onSelected: (choice) {
             log('Selected popup menu $choice');
+            switch (choice) {
+              case kMenuClearSearch:
+                log('Clear search data');
+                Provider.of<ResultsService>(context, listen: false).resetSearchData();
+                break;
+              case kMenuSettings:
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const AppSettingsScreen()));
+                break;
+            }
           }, itemBuilder: (context) {
-            return {'Reset', 'Settings'}.map((choice) {
+            return {kMenuClearSearch, kMenuSettings}.map((choice) {
               return PopupMenuItem<String>(
                 value: choice,
                 child: Text(choice),

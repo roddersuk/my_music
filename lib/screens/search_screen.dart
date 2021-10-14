@@ -21,6 +21,11 @@ class SearchScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer2<Data, ResultsService>(
         builder: (context, data, resultsService, child) {
+          _artistController.text = resultsService.searchData.artist;//Settings.getValue(kSearchArtistKey, '');
+          _albumController.text = resultsService.searchData.album;//Settings.getValue(kSearchAlbumKey, '');
+          _trackController.text = resultsService.searchData.track;//Settings.getValue(kSearchTrackKey, '');
+          _genreController.text = resultsService.searchData.genre;//Settings.getValue(kSearchGenreKey, '');
+          _yearController.text = resultsService.searchData.year.toString();//Settings.getValue(kSearchYearKey, 0).toString();
       return Scaffold(
         body: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -91,7 +96,7 @@ class SearchScreen extends StatelessWidget {
                 resultsService.getSearchResults();
                 data.tabController.animateTo(kSelectScreenIndex);
               } else {
-                Fluttertoast.showToast(msg: 'No search criteria');
+                Fluttertoast.showToast(msg: 'No search criteria specified');
               }
             }
           }),

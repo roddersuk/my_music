@@ -1,8 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="uk.co.parksyde.my_music">
-   <application
-        android:label="my_music"
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <application
+        android:label="Rod's Music Selector"
         android:icon="@mipmap/ic_launcher">
+
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"
