@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:my_music/components/log_mixin.dart';
 import 'package:yamaha_yxc/yamaha_yxc.dart';
 
-import '../tools/utilities.dart';
 import 'data.dart';
 
 class RendererService with ChangeNotifier, LogMixin {
   RendererService({required this.data});
 
   Data data;
-
   List<Renderer> renderers = [];
   final List<int> _rendererList = [];
+  Renderer? prevRenderer;
 
   void toggleRendererSelected(index) {
     renderers[index].toggleSelected();
@@ -29,69 +28,90 @@ class RendererService with ChangeNotifier, LogMixin {
     notifyListeners();
   }
 
-  Future<void> initialise() async {
-    log('Initialising renderer ${selectedRenderer.id}');
-    String rBookmark = selectedRenderer.id;
-    await data.twonky.stop(renderer: rBookmark).then(
-          (value) => data.twonky.clear(renderer: rBookmark).then((value) async {
-            await data.twonky.setMute(renderer: renderer, mute: true);
-            log('Twonky queue stopped and cleared');
+  Future<int> initialise() async {
+    int rc = 0;
+    if (previousRenderer != '') {
+      log('Stopping previous renderer $previousRenderer');
+      await data.twonky
+          .stop(renderer: previousRenderer)
+          .then((value) => log('$previousRenderer stopped'));
+      prevRenderer = selectedRenderer;
+    }
+    log('Initialising renderer $renderer');
+    await data.twonky.stop(renderer: renderer).then(
+          (value) => data.twonky.clear(renderer: renderer).then((value) async {
+            log('$renderer twonky queue stopped and cleared');
             if (selectedRenderer.isMusiccast) {
-              log('Renderer is musiccast');
-              YamahaYXC yxc = YamahaYXC(selectedRenderer.baseUrl);
-              try {
-                await yxc.zone
-                    .setPower(
-                  zone: ZoneType.main,
-                  power: PowerStatus.on,
-                )
-                    .then((value) =>
-                    justWait(milliseconds: 1000)) // avoid Guarded error?
-                    .then(
-                      (value) =>
-                      yxc.network
-                          .setPlayback(
-                        playback: PlaybackStatus.stop,
-                      )
-                          .then(
-                            (value) =>
-                            yxc.zone
-                                .setMute(
-                              zone: ZoneType.main,
-                              enable: true,
-                            )
-                                .then(
-                                  (value) =>
-                                  yxc.zone
-                                      .prepareInputChange(
-                                    zone: ZoneType.main,
-                                    input: 'server',
-                                  )
-                                      .then(
-                                        (value) =>
-                                        yxc.zone.setInput(
-                                          zone: ZoneType.main,
-                                          input: 'server',
-                                          mode: 'autoplay_disabled',
-                                        ),
-                                  ),
-                            ),
-                      ),
-                );
-              } catch(e) {
-                log('Musiccast failed with $e');
-              }
+              rc = await initMusiccast();
             }
-            log('Renderer initialised');
+            if (rc == 0) {
+              log('Renderer $renderer initialised');
+            } else {
+              log('Renderer $renderer initialisation failed, rc= $rc');
+            }
           }),
         );
+    return rc;
   }
 
-  Future skipMusiccastQueue() async {
-    log('skipMusiccastQueue');
+  Future turnOn(YamahaYXC? yxc) async {
+    yxc ??= YamahaYXC(selectedRenderer.baseUrl);
+    await yxc.zone.setPower(power: PowerStatus.on);
+    // If we need to power up the renderer it needs time before we can
+    // issue other commands??
+    await Future.delayed(const Duration(milliseconds: 100));
+    log('Musiccast Powered on');
+  }
+
+  void turnOff(YamahaYXC? yxc) async {
+    if (selectedRenderer.isMusiccast) {
+      yxc ??= YamahaYXC(selectedRenderer.baseUrl);
+      await yxc.zone.setPower(power: PowerStatus.standby);
+      log('Musiccast Powered off');
+    }
+  }
+
+  Future<int> initMusiccast() async {
+    log('Initialising Musiccast');
+    YamahaYXC yxc = YamahaYXC(selectedRenderer.baseUrl);
+    try {
+      await yxc.zone.getStatus().then((status) async {
+        log('Power is ${status['power']}');
+        if (status['power'] == PowerStatus.standby.str) {
+          await turnOn(yxc);
+        }
+        if (status['mute'] == false) {
+          await yxc.zone
+              .setMute(enable: true)
+              .then((value) => log('Musiccast muted'));
+        }
+        await yxc.network.getPlayInfo().then((playInfo) async {
+          if (playInfo['playback'] != PlaybackStatus.stop) {
+            await yxc.network
+                .setPlayback(playback: PlaybackStatus.stop)
+                .then((value) => log('Musiccast playback stopped'));
+          }
+        });
+        if (status['input'] != 'server') {
+          await yxc.zone
+              .prepareInputChange(input: 'server')
+              .then((value) =>
+                  yxc.zone.setInput(input: 'server', mode: 'autoplay_disabled'))
+              .then((value) => log('Musiccast input set to server'));
+        }
+      });
+      await skipMusiccastQueue(yxc);
+      await yxc.zone.setMute(zone: ZoneType.main, enable: false);
+    } catch (e) {
+      log('Musiccast initialisation failed with $e');
+      return 1;
+    }
+    return 0;
+  }
+
+  Future skipMusiccastQueue(YamahaYXC yxc) async {
     if (selectedRenderer.isMusiccast) {
       log('Skipping Musiccast queue');
-      YamahaYXC yxc = YamahaYXC(selectedRenderer.baseUrl);
       return await yxc.network
           .getPlayQueue(input: 'server', size: 1)
           .then((pq) async {
@@ -99,19 +119,11 @@ class RendererService with ChangeNotifier, LogMixin {
         if (maxLine > 0) {
           num tracksToSkip = maxLine - pq['playing_index'];
           log('Skipping $tracksToSkip tracks');
-          List<Future> futures = [];
           for (int i = 0; i < tracksToSkip; i++) {
-            futures.add(yxc.network
-                .setPlayback(
-                  playback: PlaybackStatus.next,
-                )
-                .then((value) => justWait(milliseconds: 1000)));
-          } // avoid Guarded error?
-          Future.wait(futures).then(
-              (value) => yxc.zone.setMute(zone: ZoneType.main, enable: false));
+            await yxc.network.setPlayback(playback: PlaybackStatus.next);
+          }
         } else {
           log('No tracks to skip');
-          await yxc.zone.setMute(zone: ZoneType.main, enable: false);
         }
       });
     }
@@ -130,6 +142,8 @@ class RendererService with ChangeNotifier, LogMixin {
   Renderer get selectedRenderer => renderers[_rendererList[0]];
 
   String get renderer => selectedRenderer.id;
+
+  String get previousRenderer => (prevRenderer != null) ? prevRenderer!.id : '';
 
   void getRenderers() async {
     data.twonky.getRenderers().then((renderersJson) {

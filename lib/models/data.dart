@@ -8,24 +8,19 @@ class Data with ChangeNotifier {
   late TabController tabController;
   Twonky twonky = Twonky(
       hostname: Settings.getValue(kTwonkyIPAddressKey, kTwonkyIPAddress),
-      port: int.parse(Settings.getValue(kTwonkyPortKey, kTwonkyPort.toString()))
-      );
+      port:
+          int.parse(Settings.getValue(kTwonkyPortKey, kTwonkyPort.toString())));
 
   void setTabController(TabController tabController) {
     this.tabController = tabController;
   }
 
   void getServer() async {
+    twonky.setServer(
+        hostname: Settings.getValue(kTwonkyIPAddressKey, kTwonkyIPAddress),
+        port: int.parse(
+            Settings.getValue(kTwonkyPortKey, kTwonkyPort.toString())));
     await twonky.getServer();
-    notifyListeners();
+      notifyListeners();
   }
-  //
-  // void resetSearchData() {
-  //   Settings.setValue(kSearchArtistKey, '');
-  //   Settings.setValue(kSearchAlbumKey, '');
-  //   Settings.setValue(kSearchTrackKey, '');
-  //   Settings.setValue(kSearchGenreKey, '');
-  //   Settings.setValue(kSearchYearKey, 0);
-  //   notifyListeners();
-  // }
 }

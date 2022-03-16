@@ -11,7 +11,7 @@ class Pages {
     Page(
       tabText: 'Search',
       tabIcon: const Icon(Icons.search),
-      screen: SearchScreen(),
+      screen: const SearchScreen(),
     ),
     Page(
       tabText: 'Select',

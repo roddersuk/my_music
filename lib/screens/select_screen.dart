@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:my_music/components/scroll_behaviour.dart';
 import 'package:provider/provider.dart';
 import 'package:loader_overlay/loader_overlay.dart';
 
+import '../colours.dart';
 import '../components/selectable_tile.dart';
 import '../models/data.dart';
 import '../models/playback_service.dart';
@@ -22,11 +22,12 @@ class SelectScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var loaderOverlay = context.loaderOverlay;
+    TextStyle? labelStyle = Theme.of(context).textTheme.bodySmall;
+    TextStyle? titleLarge = Theme.of(context).textTheme.titleLarge;
 
     return Consumer4<Data, ResultsService, RendererService, PlaybackService>(
         builder: (context, data, resultsService, rendererService,
             playbackService, child) {
-
       WidgetsBinding.instance!.addPostFrameCallback((_) {
         // Need to preserve the loader overlay to avoid invalid ancestor error
         // loaderOverlay = context.loaderOverlay;
@@ -47,15 +48,16 @@ class SelectScreen extends StatelessWidget {
 
       _controller.addListener(() {
         if (_controller.position.atEdge && _controller.position.pixels != 0) {
-            if (resultsService.hasMoreResults &&
-                !resultsService.searchingForResults) {
-              loaderOverlay.show();
-              resultsService.getMoreSearchResults();
-            }
+          if (resultsService.hasMoreResults &&
+              !resultsService.searchingForResults) {
+            loaderOverlay.show();
+            resultsService.getMoreSearchResults();
+          }
         }
       });
 
       return Scaffold(
+        backgroundColor: Colors.transparent,
         body: LoaderOverlay(
           useDefaultLoading: false,
           overlayWidget: Center(
@@ -73,7 +75,10 @@ class SelectScreen extends StatelessWidget {
               padding: const EdgeInsets.all(4.0),
               child: (resultsService.hasResults)
                   ? Column(children: [
-                      const Text('Tap to select'),
+                      Text(
+                        'Tap to select',
+                        style: labelStyle,
+                      ),
                       Expanded(
                         child: ScrollConfiguration(
                           behavior: MyCustomScrollBehavior(),
@@ -92,11 +97,11 @@ class SelectScreen extends StatelessWidget {
                                 (index, item) => SelectableTile(
                                   size: 100.0,
                                   imageUrl: item.imageUrl,
-                                  label: item.track +
-                                      ((item.track == "") ? '' : '\n') +
-                                      '${item.album} by ${item.artist}',
+                                  label: ((item.track != "")
+                                      ? item.track
+                                      : '${item.album} by ${item.artist}'),
                                   tooltip:
-                                      'Album:${item.album}\nArtist:${item.artist}\nTrack:${item.track}',
+                                      'Album:${item.album}\nArtist:${item.artist}',
                                   onTap: () => resultsService
                                       .toggleResultSelected(index),
                                   selected: item.selected,
@@ -109,13 +114,17 @@ class SelectScreen extends StatelessWidget {
                     ])
                   : (resultsService.searchingForResults)
                       ? const Text('')
-                      : const Text('No results'),
+                      : Text(
+                          'No results',
+                          style: titleLarge,
+                        ),
             ),
           ),
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: (() {
-            if (resultsService.hasResults) {
+            if (resultsService.hasSelection) {
+              playbackService.preparePlaylist();
               if (rendererService.hasRenderer) {
                 playbackService.start();
                 data.tabController.animateTo(kPlayScreenIndex);
@@ -123,7 +132,8 @@ class SelectScreen extends StatelessWidget {
                 data.tabController.animateTo(kSpeakerScreenIndex);
               }
             } else {
-              Fluttertoast.showToast(msg: 'Nothing selected');
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Nothing selected')));
             }
           }),
           tooltip: 'Play selection',

@@ -1,13 +1,12 @@
 import 'dart:async';
+import 'data.dart';
 
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:my_music/components/log_mixin.dart';
 
 import '../constants.dart';
 import '../models/renderer_service.dart';
 import '../models/results_service.dart';
-import 'data.dart';
 
 class PlaybackService with ChangeNotifier, LogMixin {
   PlaybackService(
@@ -22,45 +21,100 @@ class PlaybackService with ChangeNotifier, LogMixin {
   final Playback _playback = Playback();
   final List<MusicResult> _playlist = [];
   bool _buildingPlaylist = false;
+  Future<int>? _fPlaylist;
 
-  void start() async {
-    log('Start playing');
-    var renderer = rendererService.renderer;
-    List<Future> futures = [];
-    futures.add(_buildPlaylist());
-    futures.add(rendererService
-        .initialise()
-        .then((value) => futures.add(rendererService.skipMusiccastQueue())));
-    await Future.wait(futures).then((value) async {
-      int index = 0;
-      for (MusicResult item in _playlist) {
-        // log('Add ${item.track} on ${item.album} at index $index');
-        await data.twonky
-            .addBookmark(
-              renderer: renderer,
-              item: item.id,
-              index: index,
-            )
-            .then(
-              (value) => log('Added ${item.track} value = $value'),
-            );
-        index++;
-      }
-      log('All tracks added to Twonky queue');
-    }).then((value) async {
-      log('Begin playback');
-      mute(false);
-      _playback.volume = double.parse(await data.twonky.getVolumePercent(renderer: renderer));
-      _playback.state = PlaybackState.playing;
-      data.twonky.play(renderer: renderer);
-      startPlaybackTimer();
+  @override
+  void dispose() {
+    if (rendererService.hasRenderer && (isPlaying || isPaused)) {
+      stop();
+      rendererService.turnOff(null);
     }
-    );
+    super.dispose();
+  }
+
+  Future preparePlaylist() async {
+    log('Prepare playlist');
+    _fPlaylist = _buildPlaylist().then((value) async {
+        if (value != 0) {
+          log('buildPlaylist failed rc=$value');
+        }
+        return value;
+    });
+  }
+
+  void prepareQueue() async {
+    int index = 0;
+    for (MusicResult item in _playlist) {
+      // log('Add ${item.track} on ${item.album} at index $index');
+      await data.twonky
+          .addBookmark(
+        renderer: rendererService.renderer,
+        item: item.id,
+        index: index,
+      ).then((value) => log('Added ${item.track} value = $value'),
+      );
+      index++;
+    }
+    log('All tracks added to Twonky queue');
+  }
+
+  Future<int> start() async {
+    log('Start playing');
+    if (_fPlaylist == null) preparePlaylist();
+    int rc = 0;
+    // var renderer = rendererService.renderer;
+    // List<Future<int>> futures = [];
+    // futures.add(_buildPlaylist());
+    // futures.add(rendererService.initialise());
+    // Future.wait(futures)
+    rc = await rendererService.initialise();
+        // .then((value) async {
+      // for (int val in values) {
+      //   if (value != 0) {
+      //     log('Initialisation failed rc=$val');
+      //     rc = val;
+      //     return;
+      //   }
+      // }
+      // int index = 0;
+      // for (MusicResult item in _playlist) {
+      //   // log('Add ${item.track} on ${item.album} at index $index');
+      //   await data.twonky
+      //       .addBookmark(
+      //     renderer: renderer,
+      //     item: item.id,
+      //     index: index,
+      //   )
+      //       .then(
+      //         (value) => log('Added ${item.track} value = $value'),
+      //   );
+      //   index++;
+      // }
+      // log('All tracks added to Twonky queue');
+    // }
+    // );
+    // .then((value) async {
+    if (rc == 0) {
+      await _fPlaylist?.then((value) => prepareQueue());
+      log('Begin playback');
+      _playback.volume =
+          double.parse(await data.twonky.getVolumePercent(renderer: rendererService.renderer));
+      await data.twonky.play(renderer: rendererService.renderer);
+      _playback.state = PlaybackState.playing;
+      startPlaybackTimer();
+    } else {
+      log('Initialisation failed rc=$rc');
+      _playback.state = PlaybackState.nomedia;
+    }
+    // }
+    // );
+
     notifyListeners();
+    return rc;
   }
 
   void pauseResume() {
-    log('Pause/Resume currently ${(_playback.state == PlaybackState.playing)?"playing":"paused/stopped"}');
+    log('Pause/Resume currently ${(isPlaying) ? "playing" : "paused/stopped"}');
     if (rendererService.hasRenderer) {
       var renderer = rendererService.renderer;
       switch (_playback.state) {
@@ -80,6 +134,11 @@ class PlaybackService with ChangeNotifier, LogMixin {
         case PlaybackState.paused:
           isPaused = false;
           if (isPlaying) data.twonky.pause(renderer: renderer, resume: true);
+          break;
+        case PlaybackState.noVal4:
+          break;
+        case PlaybackState.noVal5:
+          break;
       }
     }
     notifyListeners();
@@ -90,6 +149,8 @@ class PlaybackService with ChangeNotifier, LogMixin {
   int get currentTrackIndex => _playback.track;
 
   int get numberOfTracks => _playlist.length;
+
+  bool get hasRenderer => rendererService.hasRenderer;
 
   bool nextTrack() {
     if (_playback.track < _playlist.length - 1 && rendererService.hasRenderer) {
@@ -135,7 +196,8 @@ class PlaybackService with ChangeNotifier, LogMixin {
       _playback.track = track;
       _playback.position = 0.0;
       _playback.duration = currentTrack.duration;
-      data.twonky.setPlayindex(renderer: rendererService.renderer, index: track);
+      data.twonky
+          .setPlayindex(renderer: rendererService.renderer, index: track);
       notifyListeners();
       return true;
     } else {
@@ -157,11 +219,11 @@ class PlaybackService with ChangeNotifier, LogMixin {
 
   set isMuted(bool muted) => _playback.muted = muted;
 
-  bool get isPaused => _playback.state == PlaybackState.paused;
+  bool get isNoMedia => _playback.state == PlaybackState.nomedia;
 
   bool get isStopped => _playback.state == PlaybackState.stopped;
 
-  bool get isPlaying => _playback.state == PlaybackState.playing;
+  bool get isPaused => _playback.state == PlaybackState.paused;
 
   set isPaused(bool paused) =>
       _playback.state = (paused && _playback.state == PlaybackState.playing)
@@ -170,6 +232,11 @@ class PlaybackService with ChangeNotifier, LogMixin {
               ? PlaybackState.playing
               : _playback.state;
 
+  bool get isPlaying => _playback.state == PlaybackState.playing;
+
+  // set isPlaying(bool playing) =>
+  //     _playback.state = playing ? PlaybackState.playing : PlaybackState.stopped;
+
   double get playbackVolume => _playback.volume / 100.0;
 
   void updateVolume(double newVolume) {
@@ -177,31 +244,27 @@ class PlaybackService with ChangeNotifier, LogMixin {
     _playback.volume = newVolume * 100.0;
     if (rendererService.hasRenderer) {
       data.twonky.setVolumePercent(
-          renderer: rendererService.renderer, volume: (_playback.volume).toInt());
+          renderer: rendererService.renderer,
+          volume: (_playback.volume).toInt());
     }
     notifyListeners();
   }
 
   get isBuildingPlaylist => _buildingPlaylist;
 
-  Future<void> _buildPlaylist() async {
+  Future<int> _buildPlaylist() async {
     if (!_buildingPlaylist) {
       log('Building playlist');
       _buildingPlaylist = true;
       _playlist.clear();
+      List<List<MusicResult>> albums = [];
       if (resultsService.searchData.type == 'musicItem') {
         log('Music items from selected tracks');
         for (int i in resultsService.selectedResults) {
           _playlist.add(resultsService.searchResults[i]);
           MusicResult sr = resultsService.searchResults[i];
-          log(
-              'Track: ${sr.track}, Album: ${sr.album}, Artist: ${sr.artist}, Duration: ${sr.duration}');
+          log('Track: ${sr.track}, Album: ${sr.album}, Artist: ${sr.artist}, Duration: ${sr.duration}');
         }
-        _buildingPlaylist = false;
-        _playback.track = 0;
-        _playback.duration = _playlist[0].duration;
-        _playback.position = 0.0;
-        _playback.state = PlaybackState.playing;
       } else {
         log('Music items from selected albums');
         List<Future> futures = [];
@@ -209,33 +272,39 @@ class PlaybackService with ChangeNotifier, LogMixin {
           MusicResult item = resultsService.searchResults[i];
           futures.add(resultsService
               .getResults(
-                query: data.twonky.queryString(
-                  album: item.album,
-                  artist: item.artist,
-                  type: kMusicItem,
-                ),
-                start: 0,
-                count: item.childCount,
-                sort: 'upnp:originalTrackNumber=ascending',
+            query: data.twonky.queryString(
+              album: item.album,
+              artist: item.artist,
+              type: kMusicItem,
+            ),
+            start: 0,
+            count: item.childCount,
+            sort: 'upnp:originalTrackNumber=ascending',
           )
-              .then((resultsJson) => futures.add(resultsService.addMusicResults(
-                  resultsJson: resultsJson,
-                  musicResults: _playlist,
-                  isPlaylist: true))));
+              .then((resultsJson) {
+            List<MusicResult> album = [];
+            futures.add(resultsService.addMusicResults(
+                resultsJson: resultsJson,
+                musicResults: album,
+                isPlaylist: true));
+            albums.add(album);
+          }));
         }
         await Future.wait(futures).then((value) {
-          log('Playlist built');
-          _buildingPlaylist = false;
-          _playback.track = 0;
-          _playback.duration = _playlist[0].duration;
-          _playback.position = 0.0;
-          _playback.state = PlaybackState.playing;
+          if (albums.isNotEmpty) {
+            for (List<MusicResult> album in albums) {
+              _playlist.addAll(album);
+            }
+          }
         });
       }
-    } else {
-      Fluttertoast.showToast(
-          msg: 'Building previous selection\nPlease wait and try again.');
+      log('Playlist built');
+      _buildingPlaylist = false;
+      _playback.track = 0;
+      _playback.duration = _playlist[0].duration;
+      _playback.position = 0.0;
     }
+    return 0;
   }
 
   void startPlaybackTimer() {
@@ -247,20 +316,24 @@ class PlaybackService with ChangeNotifier, LogMixin {
           .then((playindex) => data.twonky
                   .getState(renderer: rendererService.renderer, numeric: true)
                   .then((state) {
+                log('Playback state=$state playindex=$playindex');
                 List<String> p = playindex.split('|');
                 List<String> s = state.split('|');
                 _playback.state = PlaybackState.values[int.parse(s[0])];
                 _playback.track = int.parse(p[0]);
                 _playback.duration = int.parse(s[2]) ~/ 1000;
-                _playback.position =
-                    (int.parse(s[1]).toDouble() / 1000.0) / _playback.duration;
-                if ((_playback.state != PlaybackState.playing &&
-                        _playback.state != PlaybackState.paused) ||
+                assert(_playback.duration > 0);
+                if (_playback.duration > 0) {
+                  _playback.position = (int.parse(s[1]).toDouble() / 1000.0) /
+                      _playback.duration;
+                } else {
+                  _playback.position = 0;
+                }
+                if ((!isPlaying && !isPaused) ||
                     (_playback.position >= 0.999 && nextTrack() == false)) {
                   log('Playback timer cancelled! state=${_playback.state} position=${_playback.position}');
                   timer.cancel();
                 }
-
                 notifyListeners();
               }));
     });
@@ -296,6 +369,8 @@ enum PlaybackState {
   playing,
   seeking,
   paused,
+  noVal4,
+  noVal5,
   nomedia,
 }
 

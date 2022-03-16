@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:selectable_container/selectable_container.dart';
+import 'package:my_music/colours.dart';
 
 class SelectableTile extends StatelessWidget {
   const SelectableTile(
@@ -22,7 +23,14 @@ class SelectableTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    TextStyle? captionStyle = Theme.of(context).textTheme.bodySmall;
     return SelectableContainer(
+      marginColor: Colors.transparent,
+      unselectedBorderColor: kUnSelectedBorder,
+      selectedBorderColor: Theme.of(context).colorScheme.secondary,
+      unselectedBackgroundColor: kUnSelectedBackground,
+      selectedBackgroundColor: kSelectedBackground,
+      unselectedOpacity: 1.0,
       onValueChanged: (isSelected) => onTap(),
       selected: selected,
       iconAlignment: Alignment.topLeft,
@@ -47,7 +55,7 @@ class SelectableTile extends StatelessWidget {
               Text(
                 label,
                 overflow: TextOverflow.visible,
-                style: const TextStyle(fontSize: 12),
+                style: captionStyle,
               ),
             ],
           ),

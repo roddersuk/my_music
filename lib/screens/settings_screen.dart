@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_settings_screens/flutter_settings_screens.dart';
 import 'package:my_music/components/log_mixin.dart';
@@ -13,67 +12,86 @@ class AppSettingsScreen extends StatefulWidget with LogMixin {
 }
 
 class _AppSettingsScreenState extends State<AppSettingsScreen> with LogMixin {
+  bool _changed = false;
+  final String _prevIPAddress =
+      Settings.getValue(kTwonkyIPAddressKey, kTwonkyIPAddress);
+  final String _prevPort =
+      Settings.getValue(kTwonkyPortKey, kTwonkyPort.toString());
+
   void reset() async {
     log('Reset');
     await Settings.setValue(kTwonkyIPAddressKey, kTwonkyIPAddress);
     await Settings.setValue(kTwonkyPortKey, kTwonkyPort.toString());
-    setState(() {
-      //Update screen
-    });
+    _changed = (kTwonkyIPAddress != _prevIPAddress ||
+        kTwonkyPort.toString() != _prevPort);
+  }
+
+  void updateHostname(String newIPAddress) {
+    if (newIPAddress != _prevIPAddress) _changed = true;
+  }
+
+  void updatePort(String newPort) {
+    if (newPort != _prevPort) _changed = true;
   }
 
   @override
   Widget build(BuildContext context) {
-    return SettingsScreen(
-      title: 'Application Settings',
-      children: [
-        TextInputSettingsTile(
-          title: 'Twonky IP Address',
-          settingKey: kTwonkyIPAddressKey,
-          initialValue: kTwonkyIPAddress,
-          validator: (String? ipAddress) {
-            if (ipAddress == null) {
-              return 'IP address cannot be blank';
-            } else {
-              List<String> ip = ipAddress.split('.');
-              if (ip.length != 4) {
-                return 'Must be 4 numbers separated by dots';
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context, _changed);
+        return true;
+      },
+      child: SettingsScreen(
+        title: kSettingsTitle,
+        children: [
+          TextInputSettingsTile(
+            title: kSettingsTwonkyIP,
+            settingKey: kTwonkyIPAddressKey,
+            initialValue: kTwonkyIPAddress.toString(),
+            validator: (String? ipAddress) {
+              if (ipAddress == null) {
+                return kSettingsNotBlank;
               } else {
-                for (String s in ip) {
-                  int? n = int.tryParse(s);
-                  if (n == null) {
-                    return 'Invalid characters in IP address';
-                  } else if (n < 0 || n > 255) {
-                    return 'Must be numbers between 0 and 255';
+                List<String> ip = ipAddress.split('.');
+                if (ip.length != 4) {
+                  return kSettingsTwonkyIPFormat;
+                } else {
+                  for (String s in ip) {
+                    int? n = int.tryParse(s);
+                    if (n == null) {
+                      return kSettingsInvalidChars;
+                    } else if (n < 0 || n > 255) {
+                      return kSettingsTwonkyIPValues;
+                    }
                   }
                 }
               }
-            }
-            return null;
-          },
-        ),
-        TextInputSettingsTile(
-          title: 'Twonky Port',
-          settingKey: kTwonkyPortKey,
-          initialValue: kTwonkyPort.toString(),
-          validator: (String? port) {
-            if (port == null || port.isEmpty) {
-              return 'Port cannot be blank';
-            } else {
-              int? nPort = int.tryParse(port);
-              if (nPort == null) {
-                return 'Invalid characters in port number';
-              } else if (nPort < 1024 || nPort > 65535) {
-                return 'Port must be between 1024 nd 65535';
+              return null;
+            },
+            onChange: updateHostname,
+          ),
+          TextInputSettingsTile(
+            title: kSettingsTwonkyPort,
+            settingKey: kTwonkyPortKey,
+            initialValue: kTwonkyPort.toString(),
+            validator: (String? port) {
+              if (port == null || port.isEmpty) {
+                return kSettingsNotBlank;
+              } else {
+                int? nPort = int.tryParse(port);
+                if (nPort == null) {
+                  return kSettingsInvalidChars;
+                } else if (nPort < 1024 || nPort > 65535) {
+                  return kSettingsTwonkyPortValues;
+                }
               }
-            }
-
-            return null;
-          },
-        ),
-        ElevatedButton(onPressed: reset, child: const Text('Reset settings')),
-        // SettingsGroup(title: 'main', children: []),
-      ],
+              return null;
+            },
+            onChange: updatePort,
+          ),
+          ElevatedButton(onPressed: reset, child: const Text(kSettingsReset)),
+        ],
+      ),
     );
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 
 import '../components/selectable_tile.dart';
@@ -19,6 +18,7 @@ class RendererScreen extends StatelessWidget {
         builder: (context, data, resultsService, rendererService,
             playbackService, child) {
       return Scaffold(
+        backgroundColor: Colors.transparent,
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(4.0),
@@ -50,13 +50,23 @@ class RendererScreen extends StatelessWidget {
           ),
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: (() {
+          onPressed: (() async {
             if (resultsService.hasResults && rendererService.hasRenderer) {
-              playbackService.start();
-              data.tabController.animateTo(kPlayScreenIndex);
-            } else {
-              Fluttertoast.showToast(msg: 'Nothing selected');
+              int rc = await playbackService.start();
+              if (rc == 0) {
+                data.tabController.animateTo(kPlayScreenIndex);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(
+                        'Failed to initialise the selected renderer rc=$rc')));
+              }
+            } else if (!resultsService.hasResults) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('No music selected')));
               data.tabController.animateTo(kSelectScreenIndex);
+            } else if (!rendererService.hasRenderer) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Select at least one speaker')));
             }
           }),
           tooltip: 'Play',

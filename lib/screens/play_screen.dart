@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:provider/provider.dart';
 
-import '../constants.dart';
+import '../colours.dart';
 import '../models/playback_service.dart';
 
 class PlayScreen extends StatelessWidget {
@@ -11,9 +11,13 @@ class PlayScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    TextStyle? titleLarge = Theme.of(context).textTheme.titleLarge;
+    TextStyle? labelLarge = Theme.of(context).textTheme.labelLarge;
+    TextStyle? labelMedium = Theme.of(context).textTheme.labelMedium;
     return Consumer<PlaybackService>(
         builder: (context, playbackService, child) {
       return Scaffold(
+        backgroundColor: Colors.transparent,
         body: Center(
           child: (playbackService.isBuildingPlaylist)
               ? SpinKitFadingCircle(
@@ -26,110 +30,123 @@ class PlayScreen extends StatelessWidget {
                   size: 100.0,
                 )
               : (playbackService.hasPlaylist)
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                            '${playbackService.currentTrackIndex + 1} of ${playbackService.numberOfTracks}'),
-                        SizedBox(
-                          width: 300.0,
-                          height: 300.0,
-                          child: FittedBox(
-                            child: CachedNetworkImage(
-                              imageUrl: playbackService.currentTrack.imageUrl,
-                              placeholder: (context, url) =>
-                                  const CircularProgressIndicator(),
-                              errorWidget: (context, url, error) =>
-                                  const Icon(Icons.error),
-                            ),
-                            fit: BoxFit.fill,
-                          ),
-                        ),
-                        Text(
-                          // (playbackService.currentTrack.track == '') ? playbackService.currentTrack.album :
-                          playbackService.currentTrack.track,
-                          style: const TextStyle(fontSize: 20),
-                        ),
-                        if (playbackService.currentTrack.track != '')
-                          Text(
-                              '${playbackService.currentTrack.artist} - ${playbackService.currentTrack.album}'),
-                        Row(
+                  ? (playbackService.hasRenderer)
+                      ? Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            IconButton(
-                              icon: Icon((playbackService.isMuted)
-                                  ? Icons.volume_up
-                                  : Icons.volume_off),
-                              onPressed: () => playbackService.mute(!playbackService.isMuted),
+                            Expanded(
+                              child: FittedBox(
+                                child: CachedNetworkImage(
+                                  imageUrl:
+                                      playbackService.currentTrack.imageUrl,
+                                  placeholder: (context, url) =>
+                                      const CircularProgressIndicator(),
+                                  errorWidget: (context, url, error) =>
+                                      const Icon(Icons.error),
+                                ),
+                                fit: BoxFit.fill,
+                              ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.skip_previous),
-                              onPressed: (playbackService.firstTrack)
-                                  ? null
-                                  : () => playbackService.previousTrack(),
+                            Text(
+                              playbackService.currentTrack.track,
+                              style: labelLarge,
                             ),
-                            IconButton(
-                              iconSize: 36,
-                              icon: Icon((playbackService.isPaused ||
-                                      playbackService.isStopped)
-                                  ? Icons.play_arrow
-                                  : Icons.pause),
-                              onPressed: () => playbackService.pauseResume(),
+                            if (playbackService.currentTrack.track != '')
+                              Text(
+                                '${playbackService.currentTrack.artist} - ${playbackService.currentTrack.album}',
+                                style: labelMedium,
+                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                IconButton(
+                                  icon: Icon((playbackService.isMuted)
+                                      ? Icons.volume_up
+                                      : Icons.volume_off),
+                                  onPressed: () => playbackService
+                                      .mute(!playbackService.isMuted),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.skip_previous),
+                                  onPressed: (playbackService.firstTrack)
+                                      ? null
+                                      : () => playbackService.previousTrack(),
+                                ),
+                                IconButton(
+                                  iconSize: 36,
+                                  icon: Icon(playbackService.isPlaying
+                                      ? Icons.pause
+                                      : Icons.play_arrow),
+                                  onPressed: () =>
+                                      playbackService.pauseResume(),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.skip_next),
+                                  onPressed: (playbackService.lastTrack)
+                                      ? null
+                                      : () => playbackService.nextTrack(),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.stop),
+                                  onPressed: (playbackService.isStopped)
+                                      ? null
+                                      : () => playbackService.stop(),
+                                ),
+                              ],
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.skip_next),
-                              onPressed: (playbackService.lastTrack)
-                                  ? null
-                                  : () => playbackService.nextTrack(),
+                            Slider(
+                              value: playbackService.playbackVolume,
+                              onChanged: (newVolume) =>
+                                  playbackService.updateVolume(newVolume),
+                              divisions: 100,
+                              label: 'Volume ${playbackService.playbackVolume}',
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.stop),
-                              onPressed: () => playbackService.stop(),
-                            ),
-                          ],
-                        ),
-                        Slider(
-                          value: playbackService.playbackVolume,
-                          onChanged: (newVolume) =>
-                              playbackService.updateVolume(newVolume),
-                          divisions: 100,
-                          label: 'Volume',
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                            Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: Column(
                                 children: [
-                                  //Text('0:0'),
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 20.0,
-                                        right: 4.0,
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 20.0,
+                                            right: 4.0,
+                                          ),
+                                          child: LinearProgressIndicator(
+                                            value: playbackService
+                                                .playbackPosition,
+                                          ),
+                                        ),
                                       ),
-                                      child: LinearProgressIndicator(
-                                        value: playbackService.playbackPosition,
+                                      Text(
+                                        playbackService.currentDuration,
+                                        //style: titleSmall,
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                  Text(playbackService.currentDuration),
+                                  Align(
+                                    alignment: Alignment.lerp(
+                                        Alignment.topLeft,
+                                        Alignment.topRight,
+                                        playbackService.playbackPosition)!,
+                                    child:
+                                        Text(playbackService.currentPosition),
+                                  )
                                 ],
                               ),
-                              Align(
-                                alignment: Alignment.lerp(
-                                    Alignment.topLeft,
-                                    Alignment.topRight,
-                                    playbackService.playbackPosition)!,
-                                child: Text(playbackService.currentPosition),
-                              )
-                            ],
-                          ),
-                        ),
-                      ],
-                    )
-                  : const Text('No playlist - choose a speaker'),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          'Choose a speaker!',
+                          style: titleLarge,
+                        )
+                  : Text(
+                      'No playlist - choose some tracks!',
+                      style: titleLarge,
+                    ),
         ),
       );
     });

@@ -1,4 +1,3 @@
-// https://www.vojtech.net/posts/better-logs-flutter/
 import 'dart:async';
 import 'dart:developer' as dev;
 
