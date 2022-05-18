@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:my_music/components/log_mixin.dart';
+import 'package:my_music/constants.dart';
+import 'package:wake_on_lan/wake_on_lan.dart';
 import 'package:yamaha_yxc/yamaha_yxc.dart';
 
 import 'data.dart';
 
+/// Manages the speakers
 class RendererService with ChangeNotifier, LogMixin {
   RendererService({required this.data});
 
@@ -24,7 +27,7 @@ class RendererService with ChangeNotifier, LogMixin {
     } else {
       _rendererList.remove(index);
     }
-    log('Selected results: $_rendererList');
+    log('Selected renderer: $_rendererList');
     notifyListeners();
   }
 
@@ -38,20 +41,53 @@ class RendererService with ChangeNotifier, LogMixin {
       prevRenderer = selectedRenderer;
     }
     log('Initialising renderer $renderer');
-    await data.twonky.stop(renderer: renderer).then(
+    // await data.twonky.stop(renderer: renderer).then(
+    //       (value) =>
+    //       data.twonky.clear(renderer: renderer).then((value) async {
+    //         log('$renderer twonky queue stopped and cleared');
+    if (await initRenderer() == 0) {
+      log('Renderer $renderer initialised');
+    } else {
+      log('Renderer $renderer initialisation failed, rc= $rc');
+    }
+    // }),
+    // );
+    if (rc == 0) {
+      await data.twonky.stop(renderer: renderer).then(
           (value) => data.twonky.clear(renderer: renderer).then((value) async {
-            log('$renderer twonky queue stopped and cleared');
-            if (selectedRenderer.isMusiccast) {
-              rc = await initMusiccast();
-            }
-            if (rc == 0) {
-              log('Renderer $renderer initialised');
-            } else {
-              log('Renderer $renderer initialisation failed, rc= $rc');
-            }
-          }),
-        );
+                log('$renderer twonky queue stopped and cleared');
+              }));
+    }
     return rc;
+  }
+
+  Future<int> initRenderer() async {
+    int rc = 0;
+    if (selectedRenderer.isMusiccast) {
+      rc = await initMusiccast();
+    } else {
+      log('Powering on non-Musiccast renderer');
+      if (await isOnline(renderer) == false) {
+        var mac = kDeviceMacAddresses[selectedRenderer.model];
+        var ip = Uri.parse(selectedRenderer.baseUrl).host;
+        if (IPv4Address.validate(ip) && MACAddress.validate(mac)) {
+          WakeOnLAN(IPv4Address(ip), MACAddress(mac!)).wake();
+          rc = 1;
+          for (int i = 0; i < 10; i++) {
+            await Future.delayed(const Duration(milliseconds: 100));
+            if (await isOnline(selectedRenderer.id) == true) {
+              rc = 0;
+              break;
+            }
+          }
+        }
+      }
+    }
+    return rc;
+  }
+
+  Future<bool> isOnline(String bookmark) async {
+    return (await data.twonky.getOnlineStatus(device: bookmark) == 'TRUE');
   }
 
   Future turnOn(YamahaYXC? yxc) async {
@@ -131,6 +167,8 @@ class RendererService with ChangeNotifier, LogMixin {
 
   bool get hasRenderer => selectedRendererCount > 0;
 
+  bool get hasRenderers => renderers.isNotEmpty;
+
   int get selectedRendererCount {
     int count = 0;
     for (Renderer renderer in renderers) {
@@ -146,23 +184,27 @@ class RendererService with ChangeNotifier, LogMixin {
   String get previousRenderer => (prevRenderer != null) ? prevRenderer!.id : '';
 
   void getRenderers() async {
-    data.twonky.getRenderers().then((renderersJson) {
-      renderers.clear();
-      for (var item in renderersJson['item']) {
-        bool musiccast = item['renderer']['modelDescription'] == 'MusicCast';
-        renderers.add(Renderer(
-          baseUrl: musiccast ? item['renderer']['baseURL'] : "",
-          id: item['renderer']['UDN'],
-          title: item['title'],
-          name: item['renderer']['friendlyName'],
-          model: item['renderer']['modelDescription'],
-          imageUrl:
-              (musiccast) ? 'images/musiccast.png' : 'images/music_player.png',
-          isMusiccast: musiccast,
-        ));
-      }
-      notifyListeners();
-    });
+    renderers.clear();
+    if (data.twonky.initialised) {
+      data.twonky.getRenderers().then((renderersJson) {
+        for (var item in renderersJson['item']) {
+          bool musiccast = item['renderer']['modelDescription'] == 'MusicCast';
+          renderers.add(Renderer(
+            baseUrl: item['renderer']['baseURL'],
+            // baseUrl: musiccast ? item['renderer']['baseURL'] : "",
+            id: item['renderer']['UDN'],
+            title: item['title'],
+            name: item['renderer']['friendlyName'],
+            model: item['renderer']['modelName'],
+            imageUrl: (musiccast)
+                ? 'images/musiccast.png'
+                : 'images/music_player.png',
+            isMusiccast: musiccast,
+          ));
+        }
+        notifyListeners();
+      });
+    }
   }
 }
 

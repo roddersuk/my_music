@@ -8,6 +8,7 @@ import 'package:my_music/components/log_mixin.dart';
 import '../constants.dart';
 import 'data.dart';
 
+/// Manages the search results
 class ResultsService with ChangeNotifier, LogMixin {
   ResultsService({required this.data});
 
@@ -64,6 +65,19 @@ class ResultsService with ChangeNotifier, LogMixin {
     );
   }
 
+  Future<dynamic> getChildren(
+      {required String url,
+      required int start,
+      required int count,
+      String? sort}) {
+    return data.twonky.getChildren(
+      url: url,
+      start: start,
+      count: count,
+      sort: sort,
+    );
+  }
+
   void getSearchResults({int start = 0, int count = kResultsBatchSize}) {
     searchingForResults = true;
     log('Searching with $query');
@@ -102,20 +116,28 @@ class ResultsService with ChangeNotifier, LogMixin {
       int childCount =
           (meta['childCount'] != null) ? int.parse(meta['childCount']) : 0;
       String imageUrl = unescape.convert(meta['upnp:albumArtURI']);
-      MusicResult musicResult = MusicResult(
-          id: item['bookmark'],
-          artist: unescape.convert(meta['upnp:artist']),
-          album: unescape.convert(meta['upnp:album']),
-          track: (type == kMusicItem) ? unescape.convert(item['title']) : "",
-          imageUrl: imageUrl,
-          childCount: childCount,
-          duration: duration);
-      if (isPlaylist) {
-        log('Adding to playlist ${unescape.convert(item['title'])} from ${unescape.convert(meta['upnp:album'])} by ${unescape.convert(meta['upnp:artist'])} duration $duration');
-        musicResults.add(musicResult);
-      } else {
-        log('Adding to results $musicResult');
-        searchResults.add(musicResult);
+      try {
+        MusicResult musicResult = MusicResult(
+            id: item['bookmark'],
+            url: item['enclosure']['url'],
+            artist: unescape.convert(meta['upnp:artist']),
+            album: unescape.convert(meta['upnp:album']),
+            track: (type == kMusicItem)
+                ? unescape.convert(item['title'])
+                : "",
+            imageUrl: imageUrl,
+            childCount: childCount,
+            duration: duration);
+
+        if (isPlaylist) {
+          log('Adding to playlist ${unescape.convert(item['title'])} from ${unescape.convert(meta['upnp:album'])} by ${unescape.convert(meta['upnp:artist'])} duration $duration');
+          musicResults.add(musicResult);
+        } else {
+          log('Adding to results $musicResult');
+          searchResults.add(musicResult);
+        }
+      } catch (e) {
+        log('its blown up ${e.toString()}');
       }
     }
   }
@@ -154,6 +176,7 @@ class MusicResult {
     required this.id,
     required this.artist,
     required this.album,
+    required this.url,
     required this.imageUrl,
     this.track = '',
     this.duration = 0,
@@ -164,6 +187,7 @@ class MusicResult {
   String id;
   String artist;
   String album;
+  String url;
   String imageUrl;
   String track;
   int duration;

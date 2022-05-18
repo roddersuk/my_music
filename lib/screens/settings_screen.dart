@@ -4,41 +4,42 @@ import 'package:my_music/components/log_mixin.dart';
 
 import '../constants.dart';
 
+/// Screen to display the app settings
 class AppSettingsScreen extends StatefulWidget with LogMixin {
   const AppSettingsScreen({Key? key}) : super(key: key);
 
   @override
-  _AppSettingsScreenState createState() => _AppSettingsScreenState();
+  AppSettingsScreenState createState() => AppSettingsScreenState();
 }
 
-class _AppSettingsScreenState extends State<AppSettingsScreen> with LogMixin {
-  bool _changed = false;
+class AppSettingsScreenState extends State<AppSettingsScreen> with LogMixin {
+  // Remember the IPAddress and Port so we can tell if they have changed
   final String _prevIPAddress =
       Settings.getValue(kTwonkyIPAddressKey, kTwonkyIPAddress);
   final String _prevPort =
       Settings.getValue(kTwonkyPortKey, kTwonkyPort.toString());
 
+  /// Set the server details back to defaults
   void reset() async {
     log('Reset');
     await Settings.setValue(kTwonkyIPAddressKey, kTwonkyIPAddress);
     await Settings.setValue(kTwonkyPortKey, kTwonkyPort.toString());
-    _changed = (kTwonkyIPAddress != _prevIPAddress ||
-        kTwonkyPort.toString() != _prevPort);
   }
 
-  void updateHostname(String newIPAddress) {
-    if (newIPAddress != _prevIPAddress) _changed = true;
-  }
-
-  void updatePort(String newPort) {
-    if (newPort != _prevPort) _changed = true;
+  /// True if the server details have been changed
+  bool changed() {
+    return (_prevIPAddress !=
+    Settings.getValue(kTwonkyIPAddressKey, kTwonkyIPAddress) ||
+    _prevPort !=
+    Settings.getValue(kTwonkyPortKey, kTwonkyPort.toString()));
   }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pop(context, _changed);
+        // Tap pop so we can return the changed status
+        Navigator.pop(context, changed());
         return true;
       },
       child: SettingsScreen(
@@ -68,7 +69,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> with LogMixin {
               }
               return null;
             },
-            onChange: updateHostname,
           ),
           TextInputSettingsTile(
             title: kSettingsTwonkyPort,
@@ -87,7 +87,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> with LogMixin {
               }
               return null;
             },
-            onChange: updatePort,
           ),
           ElevatedButton(onPressed: reset, child: const Text(kSettingsReset)),
         ],

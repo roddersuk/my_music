@@ -6,7 +6,6 @@ mixin LogMixin on Object {
 
   void log(
     String message, {
-    // DateTime? time,
     int? sequenceNumber,
     int level = 0,
     String? name,

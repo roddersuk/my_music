@@ -13,6 +13,7 @@ import '../models/results_service.dart';
 import '../tools/utilities.dart';
 import '../constants.dart';
 
+/// Screen to display the search results and select those to play
 class SelectScreen extends StatelessWidget {
   final ScrollController _controller =
       ScrollController(debugLabel: "search_results");
@@ -28,7 +29,7 @@ class SelectScreen extends StatelessWidget {
     return Consumer4<Data, ResultsService, RendererService, PlaybackService>(
         builder: (context, data, resultsService, rendererService,
             playbackService, child) {
-      WidgetsBinding.instance!.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         // Need to preserve the loader overlay to avoid invalid ancestor error
         // loaderOverlay = context.loaderOverlay;
         if (resultsService.searchingForResults) {
@@ -76,7 +77,7 @@ class SelectScreen extends StatelessWidget {
               child: (resultsService.hasResults)
                   ? Column(children: [
                       Text(
-                        'Tap to select',
+                        kSelectPrompt,
                         style: labelStyle,
                       ),
                       Expanded(
@@ -85,7 +86,6 @@ class SelectScreen extends StatelessWidget {
                           child: SingleChildScrollView(
                             scrollDirection: Axis.vertical,
                             controller: _controller,
-                            // physics: AlwaysScrollableScrollPhysics(),
                             child: Wrap(
                               direction: Axis.horizontal,
                               alignment: WrapAlignment.start,
@@ -97,11 +97,11 @@ class SelectScreen extends StatelessWidget {
                                 (index, item) => SelectableTile(
                                   size: 100.0,
                                   imageUrl: item.imageUrl,
-                                  label: ((item.track != "")
+                                  label: ((item.track != '')
                                       ? item.track
-                                      : '${item.album} by ${item.artist}'),
+                                      : '${item.album} $kSelectBy ${item.artist}'),
                                   tooltip:
-                                      'Album:${item.album}\nArtist:${item.artist}',
+                                      '$kMediaAlbum:${item.album}\n$kMediaArtist:${item.artist}',
                                   onTap: () => resultsService
                                       .toggleResultSelected(index),
                                   selected: item.selected,
@@ -115,7 +115,7 @@ class SelectScreen extends StatelessWidget {
                   : (resultsService.searchingForResults)
                       ? const Text('')
                       : Text(
-                          'No results',
+                          kSelectNoResults,
                           style: titleLarge,
                         ),
             ),
@@ -133,10 +133,10 @@ class SelectScreen extends StatelessWidget {
               }
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Nothing selected')));
+                  const SnackBar(content: Text(kSelectNothingSelected)));
             }
           }),
-          tooltip: 'Play selection',
+          tooltip: kSelectActionTooltip,
           child: const Icon(Icons.play_arrow),
         ),
       );

@@ -12,6 +12,7 @@ import 'models/renderer_service.dart';
 import 'models/results_service.dart';
 import 'models/screens.dart';
 
+/// App to allow music search and play from a Twonky server
 void main() => initSettings().then((_) => runApp(const MyApp()));
 
 Future<void> initSettings() async {
@@ -20,6 +21,7 @@ Future<void> initSettings() async {
 
 final ThemeData _kDarkTheme = _buildDarkTheme();
 
+// Set the theme for the rest of the app
 ThemeData _buildDarkTheme() {
   final ThemeData base = ThemeData.dark();
   return base.copyWith(
@@ -39,29 +41,48 @@ ThemeData _buildDarkTheme() {
     ),
     textTheme: const TextTheme(
       bodySmall: TextStyle(
-          // fontSize: 12.0,
-          fontWeight: FontWeight.bold, color: kDarkSecondary),
+        // fontSize: 12.0,
+        fontWeight: FontWeight.bold,
+        color: kDarkSecondary,
+      ),
       bodyMedium: TextStyle(
-          // fontSize: 16.0,
-          fontWeight: FontWeight.bold, color: kDarkOnSecondary),
+        // fontSize: 16.0,
+        fontWeight: FontWeight.bold,
+        color: kDarkOnSecondary,
+      ),
       bodyLarge: TextStyle(
-          // fontSize: 24.0,
-          fontWeight: FontWeight.bold, color: kDarkOnSecondary),
+        // fontSize: 24.0,
+        fontWeight: FontWeight.bold,
+        color: kDarkOnSecondary,
+      ),
       labelSmall: TextStyle(
-          fontSize: 12.0,
-          fontWeight: FontWeight.bold, color: kDarkOnSecondary),
+        fontSize: 12.0,
+        fontWeight: FontWeight.bold,
+        color: kDarkOnSecondary,
+      ),
       labelMedium: TextStyle(
-          fontSize: 16.0,
-          fontWeight: FontWeight.bold, color: kDarkOnSecondary),
+        fontSize: 16.0,
+        fontWeight: FontWeight.bold,
+        color: kDarkOnSecondary,
+      ),
       labelLarge: TextStyle(
-          fontSize: 28.0,
-          fontWeight: FontWeight.bold, color: kDarkOnSecondary),
+        fontSize: 20.0,
+        fontWeight: FontWeight.bold,
+        color: kDarkOnSecondary,
+      ),
       titleSmall: TextStyle(
-          fontWeight: FontWeight.bold, color: kDarkSecondary),
+        fontWeight: FontWeight.bold,
+        color: kDarkSecondary,
+      ),
       titleMedium: TextStyle(
-          fontWeight: FontWeight.bold, color: kDarkSecondary),
+        fontWeight: FontWeight.bold,
+        color: kDarkSecondary,
+      ),
       titleLarge: TextStyle(
-          fontWeight: FontWeight.bold, color: kDarkSecondary),
+        fontSize: 24.0,
+        fontWeight: FontWeight.bold,
+        color: kDarkSecondary,
+      ),
     ).apply(
       fontFamily: 'Arial',
     ),
@@ -79,19 +100,21 @@ class MyApp extends StatelessWidget {
           create: (context) => Data(),
         ),
         ChangeNotifierProvider(
-            create: (context) => ResultsService(
-                data: Provider.of<Data>(context, listen: false))),
+          create: (context) =>
+              ResultsService(data: Provider.of<Data>(context, listen: false)),
+        ),
         ChangeNotifierProvider(
-            create: (context) => RendererService(
-                data: Provider.of<Data>(context, listen: false))),
+          create: (context) =>
+              RendererService(data: Provider.of<Data>(context, listen: false)),
+        ),
         ChangeNotifierProvider(
-            create: (context) => PlaybackService(
-                  data: Provider.of<Data>(context, listen: false),
-                  resultsService:
-                      Provider.of<ResultsService>(context, listen: false),
-                  rendererService:
-                      Provider.of<RendererService>(context, listen: false),
-                )),
+          create: (context) => PlaybackService(
+            data: Provider.of<Data>(context, listen: false),
+            resultsService: Provider.of<ResultsService>(context, listen: false),
+            rendererService:
+                Provider.of<RendererService>(context, listen: false),
+          ),
+        ),
       ],
       child: MaterialApp(
         title: kTitle,
@@ -112,21 +135,44 @@ class MyStatefulWidget extends StatefulWidget {
 /// This is the private State class that goes with MyStatefulWidget.
 /// AnimationControllers can be created with `vsync: this` because of TickerProviderStateMixin.
 class _MyStatefulWidgetState extends State<MyStatefulWidget>
-    with TickerProviderStateMixin, LogMixin {
+    with //WidgetsBindingObserver,
+        TickerProviderStateMixin,
+        LogMixin {
   late TabController _tabController;
   final Pages _pages = Pages();
   final List<Tab> _tabs = [];
   final List<Widget> _views = [];
 
+  // TODO: Possible method to detect app closure - doesn't work on desktop
+  // late AppLifecycleState _notification;
+
+  // @override
+  // void didChangeAppLifecycleState(AppLifecycleState state) {
+  //   super.didChangeAppLifecycleState(state);
+  //   setState(() { _notification = state; });
+  //   switch (state) {
+  //     case AppLifecycleState.paused:
+  //       log('state: paused');
+  //       break;
+  //     case AppLifecycleState.inactive:
+  //       log('state: inactive');
+  //       break;
+  //     case AppLifecycleState.resumed:
+  //       log('state: resumed');
+  //       break;
+  //     case AppLifecycleState.detached:
+  //       log('state: detached');
+  //       break;
+  //   }
+  // }
+
   @override
   void initState() {
     super.initState();
-    //Settings.setValue(kTwonkyPortKey, kTwonkyPort.toString());
+    // WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: _pages.length, vsync: this);
-    Provider.of<Data>(context, listen: false)
-      ..setTabController(_tabController)
-      ..getServer();
-    Provider.of<RendererService>(context, listen: false).getRenderers();
+    Provider.of<Data>(context, listen: false).setTabController(_tabController);
+    init();
     for (var page in _pages.pages) {
       _tabs.add(
         Tab(
@@ -139,10 +185,18 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget>
 
   @override
   void dispose() {
-    super.dispose();
+    // WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
+    super.dispose();
   }
 
+  /// Initialise or re-initialise services for the current server
+  void init() async {
+    Provider.of<Data>(context, listen: false).getServer().then((value) =>
+        Provider.of<RendererService>(context, listen: false).getRenderers());
+  }
+
+  /// Build the main framework for the app including the menu and TabBar
   @override
   Widget build(BuildContext context) {
     return Consumer<Data>(builder: (context, data, child) {
@@ -151,9 +205,9 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget>
           toolbarHeight: 35.0,
           leading: (data.twonky.initialised)
               ? const Tooltip(
-                  child: Icon(Icons.link), message: kTwonkyConnected)
+                  message: kTwonkyConnected, child: Icon(Icons.link))
               : const Tooltip(
-                  child: Icon(Icons.link_off), message: kTwonkyNotConnected),
+                  message: kTwonkyNotConnected, child: Icon(Icons.link_off)),
           title: const Center(child: Text(kTitle)),
           actions: [
             PopupMenuButton(onSelected: (choice) {
@@ -171,13 +225,35 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget>
                               builder: (context) => const AppSettingsScreen()))
                       .then((changed) {
                     if (changed) {
-                      Provider.of<Data>(context, listen: false).getServer();
+                      init();
                     }
                   });
                   break;
+                case kMenuAbout:
+                  showAboutDialog(
+                      context: context,
+                      applicationIcon: const Image(
+                        image: AssetImage('images/app.png'),
+                        color: null,
+                      ),
+                      applicationVersion: kVersion,
+                      applicationLegalese: kLegalese,
+                      children: [
+                        const SizedBox(
+                          width: 100,
+                          child: Text(
+                            kAbout,
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.normal),
+                          ),
+                        ),
+                      ]);
+                  break;
               }
             }, itemBuilder: (context) {
-              return {kMenuClearSearch, kMenuSettings}.map((choice) {
+              return {kMenuClearSearch, kMenuSettings, kMenuAbout}
+                  .map((choice) {
                 return PopupMenuItem<String>(
                   value: choice,
                   child: Text(choice),

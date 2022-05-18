@@ -4,8 +4,10 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:provider/provider.dart';
 
 import '../colours.dart';
+import '../constants.dart';
 import '../models/playback_service.dart';
 
+/// Screen to display and control the currently playing track
 class PlayScreen extends StatelessWidget {
   const PlayScreen({Key? key}) : super(key: key);
 
@@ -36,6 +38,7 @@ class PlayScreen extends StatelessWidget {
                           children: [
                             Expanded(
                               child: FittedBox(
+                                fit: BoxFit.fill,
                                 child: CachedNetworkImage(
                                   imageUrl:
                                       playbackService.currentTrack.imageUrl,
@@ -44,7 +47,6 @@ class PlayScreen extends StatelessWidget {
                                   errorWidget: (context, url, error) =>
                                       const Icon(Icons.error),
                                 ),
-                                fit: BoxFit.fill,
                               ),
                             ),
                             Text(
@@ -61,8 +63,8 @@ class PlayScreen extends StatelessWidget {
                               children: [
                                 IconButton(
                                   icon: Icon((playbackService.isMuted)
-                                      ? Icons.volume_up
-                                      : Icons.volume_off),
+                                      ? Icons.volume_off
+                                      : Icons.volume_up),
                                   onPressed: () => playbackService
                                       .mute(!playbackService.isMuted),
                                 ),
@@ -140,11 +142,11 @@ class PlayScreen extends StatelessWidget {
                           ],
                         )
                       : Text(
-                          'Choose a speaker!',
+                          kPlayNoMusic,
                           style: titleLarge,
                         )
                   : Text(
-                      'No playlist - choose some tracks!',
+                      kPlayNoMusic,
                       style: titleLarge,
                     ),
         ),

@@ -4,6 +4,7 @@ import 'package:twonky_api/twonky_api.dart';
 
 import '../constants.dart';
 
+/// Manages the twonky server and tab controller
 class Data with ChangeNotifier {
   late TabController tabController;
   Twonky twonky = Twonky(
@@ -15,12 +16,12 @@ class Data with ChangeNotifier {
     this.tabController = tabController;
   }
 
-  void getServer() async {
+  Future<void> getServer() async {
     twonky.setServer(
         hostname: Settings.getValue(kTwonkyIPAddressKey, kTwonkyIPAddress),
         port: int.parse(
             Settings.getValue(kTwonkyPortKey, kTwonkyPort.toString())));
     await twonky.getServer();
-      notifyListeners();
+    notifyListeners();
   }
 }

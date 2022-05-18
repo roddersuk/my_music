@@ -6,15 +6,16 @@ import '../models/data.dart';
 import '../models/results_service.dart';
 import '../constants.dart';
 
+/// Screen to specify the search parameters and initiate the search
 class SearchScreen extends StatelessWidget {
   const SearchScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    bool _connected = false;
+    bool connected = false;
     return Consumer2<Data, ResultsService>(
         builder: (context, data, resultsService, child) {
-      _connected = data.twonky.initialised;
+      connected = data.twonky.initialised;
       TextStyle? labelStyle = Theme.of(context).textTheme.labelMedium;
       return Scaffold(
         backgroundColor: Colors.transparent,
@@ -32,52 +33,52 @@ class SearchScreen extends StatelessWidget {
                   TextFormField(
                     initialValue: resultsService.searchData.artist,
                     decoration: const InputDecoration(
-                      labelText: 'Artist',
-                      hintText: 'Enter an artist name',
+                      labelText: kMediaArtist,
+                      hintText: kSearchArtistHint,
                     ),
                     onChanged: (String value) {
                       resultsService.searchData.artist = value;
                     },
-                    enabled: _connected,
+                    enabled: connected,
                   ),
                   TextFormField(
                     initialValue: resultsService.searchData.album,
                     decoration: const InputDecoration(
-                      labelText: 'Album',
-                      hintText: 'Enter an album title',
+                      labelText: kMediaAlbum,
+                      hintText: kSearchAlbumHint,
                     ),
                     onChanged: (String value) {
                       resultsService.searchData.album = value;
                     },
-                    enabled: _connected,
+                    enabled: connected,
                   ),
                   TextFormField(
                     initialValue: resultsService.searchData.track,
                     decoration: const InputDecoration(
-                      labelText: 'Track',
-                      hintText: 'Enter the name of a track',
+                      labelText: kMediaTrack,
+                      hintText: kSearchTrackHint,
                     ),
                     onChanged: (String value) {
                       resultsService.searchData.track = value;
                     },
-                    enabled: _connected,
+                    enabled: connected,
                   ),
                   TextFormField(
                     initialValue: resultsService.searchData.genre,
                     decoration: const InputDecoration(
-                      labelText: 'Genre',
-                      hintText: 'Enter a genre',
+                      labelText: kMediaGenre,
+                      hintText: kSearchGenreHint,
                     ),
                     onChanged: (String value) {
                       resultsService.searchData.genre = value;
                     },
-                    enabled: _connected,
+                    enabled: connected,
                   ),
                   TextFormField(
                     initialValue: resultsService.searchData.year,
                     decoration: const InputDecoration(
-                      labelText: 'Year',
-                      hintText: 'Enter a year',
+                      labelText: kMediaYear,
+                      hintText: kSearchYearHint,
                     ),
                     keyboardType: TextInputType.number,
                     inputFormatters: [
@@ -86,17 +87,17 @@ class SearchScreen extends StatelessWidget {
                     onChanged: (String value) {
                       resultsService.searchData.year = value;
                     },
-                    enabled: _connected,
+                    enabled: connected,
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 50.0),
                     child: Text(
-                      'Enter the search criteria',
+                      kSearchPrompt,
                       style: labelStyle,
                     ),
                   ),
                   Text(
-                    'The results will match items that contain the text and will be be ANDed together',
+                    kSearchText,
                     style: labelStyle,
                   ),
                 ]),
@@ -111,11 +112,11 @@ class SearchScreen extends StatelessWidget {
                 data.tabController.animateTo(kSelectScreenIndex);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('No search criteria specified')));
+                    content: Text(kSearchNoCriteria)));
               }
             }
           }),
-          tooltip: 'Search for music',
+          tooltip: kSearchTooltip,
           child: const Icon(Icons.search),
         ),
       );

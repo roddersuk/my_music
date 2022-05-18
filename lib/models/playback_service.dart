@@ -4,15 +4,13 @@ import 'data.dart';
 import 'package:flutter/material.dart';
 import 'package:my_music/components/log_mixin.dart';
 
-import '../constants.dart';
 import '../models/renderer_service.dart';
 import '../models/results_service.dart';
 
+/// Manages playing of the selected music
 class PlaybackService with ChangeNotifier, LogMixin {
   PlaybackService(
-      {required this.data,
-      required this.resultsService,
-      required this.rendererService});
+      {required this.data, required this.resultsService, required this.rendererService});
 
   final Data data;
   final ResultsService resultsService;
@@ -32,27 +30,31 @@ class PlaybackService with ChangeNotifier, LogMixin {
     super.dispose();
   }
 
-  Future preparePlaylist() async {
+  Future<int> preparePlaylist() async {
     log('Prepare playlist');
     _fPlaylist = _buildPlaylist().then((value) async {
-        if (value != 0) {
-          log('buildPlaylist failed rc=$value');
-        }
-        return value;
+      if (value != 0) {
+        log('buildPlaylist failed rc=$value');
+      }
+      return value;
     });
+    return 0;
   }
 
-  void prepareQueue() async {
+  Future<void> prepareQueue() async {
+    log('Preparing Twonky queue');
     int index = 0;
     for (MusicResult item in _playlist) {
       // log('Add ${item.track} on ${item.album} at index $index');
       await data.twonky
           .addBookmark(
-        renderer: rendererService.renderer,
-        item: item.id,
-        index: index,
-      ).then((value) => log('Added ${item.track} value = $value'),
-      );
+            renderer: rendererService.renderer,
+            item: item.id,
+            index: index,
+          )
+          .then(
+            (value) => log('Added ${item.track} value = $value'),
+          );
       index++;
     }
     log('All tracks added to Twonky queue');
@@ -60,55 +62,27 @@ class PlaybackService with ChangeNotifier, LogMixin {
 
   Future<int> start() async {
     log('Start playing');
-    if (_fPlaylist == null) preparePlaylist();
     int rc = 0;
-    // var renderer = rendererService.renderer;
-    // List<Future<int>> futures = [];
-    // futures.add(_buildPlaylist());
-    // futures.add(rendererService.initialise());
-    // Future.wait(futures)
-    rc = await rendererService.initialise();
-        // .then((value) async {
-      // for (int val in values) {
-      //   if (value != 0) {
-      //     log('Initialisation failed rc=$val');
-      //     rc = val;
-      //     return;
-      //   }
-      // }
-      // int index = 0;
-      // for (MusicResult item in _playlist) {
-      //   // log('Add ${item.track} on ${item.album} at index $index');
-      //   await data.twonky
-      //       .addBookmark(
-      //     renderer: renderer,
-      //     item: item.id,
-      //     index: index,
-      //   )
-      //       .then(
-      //         (value) => log('Added ${item.track} value = $value'),
-      //   );
-      //   index++;
-      // }
-      // log('All tracks added to Twonky queue');
-    // }
-    // );
-    // .then((value) async {
-    if (rc == 0) {
-      await _fPlaylist?.then((value) => prepareQueue());
-      log('Begin playback');
-      _playback.volume =
-          double.parse(await data.twonky.getVolumePercent(renderer: rendererService.renderer));
-      await data.twonky.play(renderer: rendererService.renderer);
-      _playback.state = PlaybackState.playing;
-      startPlaybackTimer();
-    } else {
-      log('Initialisation failed rc=$rc');
-      _playback.state = PlaybackState.nomedia;
-    }
-    // }
-    // );
-
+    // preparePlaylist();
+    await rendererService.initialise().then((value) async {
+      if (value == 0) {
+        await _fPlaylist?.then((value) async {
+          await prepareQueue().then((value) async {
+            log('Begin playback');
+            _playback.volume = double.parse(
+                await data.twonky.getVolumePercent(renderer: rendererService.renderer));
+            await data.twonky.play(renderer: rendererService.renderer).then((value) {
+              _playback.state = PlaybackState.playing;
+              startPlaybackTimer();
+            });
+          });
+        });
+      } else {
+        rc = value;
+        log('Initialisation failed rc=$rc');
+        _playback.state = PlaybackState.nomedia;
+      }
+    });
     notifyListeners();
     return rc;
   }
@@ -196,8 +170,7 @@ class PlaybackService with ChangeNotifier, LogMixin {
       _playback.track = track;
       _playback.position = 0.0;
       _playback.duration = currentTrack.duration;
-      data.twonky
-          .setPlayindex(renderer: rendererService.renderer, index: track);
+      data.twonky.setPlayindex(renderer: rendererService.renderer, index: track);
       notifyListeners();
       return true;
     } else {
@@ -210,8 +183,7 @@ class PlaybackService with ChangeNotifier, LogMixin {
     if (rendererService.hasRenderer) {
       log('Mute playback $mute');
       var renderer = rendererService.renderer;
-      data.twonky.setMute(renderer: renderer, mute: mute);
-      isMuted = mute;
+      data.twonky.setMute(renderer: renderer, mute: mute).then((value) => isMuted = mute);
     }
   }
 
@@ -221,7 +193,7 @@ class PlaybackService with ChangeNotifier, LogMixin {
 
   bool get isNoMedia => _playback.state == PlaybackState.nomedia;
 
-  bool get isStopped => _playback.state == PlaybackState.stopped;
+  bool get isStopped => (_playback.state == PlaybackState.stopped || isNoMedia);
 
   bool get isPaused => _playback.state == PlaybackState.paused;
 
@@ -234,8 +206,7 @@ class PlaybackService with ChangeNotifier, LogMixin {
 
   bool get isPlaying => _playback.state == PlaybackState.playing;
 
-  // set isPlaying(bool playing) =>
-  //     _playback.state = playing ? PlaybackState.playing : PlaybackState.stopped;
+  bool get isSeeking => _playback.state == PlaybackState.seeking;
 
   double get playbackVolume => _playback.volume / 100.0;
 
@@ -243,9 +214,8 @@ class PlaybackService with ChangeNotifier, LogMixin {
     log('Update volume to $newVolume');
     _playback.volume = newVolume * 100.0;
     if (rendererService.hasRenderer) {
-      data.twonky.setVolumePercent(
-          renderer: rendererService.renderer,
-          volume: (_playback.volume).toInt());
+      data.twonky
+          .setVolumePercent(renderer: rendererService.renderer, volume: (_playback.volume).toInt());
     }
     notifyListeners();
   }
@@ -270,13 +240,21 @@ class PlaybackService with ChangeNotifier, LogMixin {
         List<Future> futures = [];
         for (int i in resultsService.selectedResults) {
           MusicResult item = resultsService.searchResults[i];
+          // May need to reinstate this to discriminate albums with same name but different artists
+          // futures.add(resultsService
+          //     .getResults(
+          //   query: data.twonky.queryString(
+          //     album: item.album,
+          //     artist: item.artist,
+          //     type: kMusicItem,
+          //   ),
+          //   start: 0,
+          //   count: item.childCount,
+          //   sort: 'upnp:originalTrackNumber=ascending',
+          // )
           futures.add(resultsService
-              .getResults(
-            query: data.twonky.queryString(
-              album: item.album,
-              artist: item.artist,
-              type: kMusicItem,
-            ),
+              .getChildren(
+            url: item.url,
             start: 0,
             count: item.childCount,
             sort: 'upnp:originalTrackNumber=ascending',
@@ -284,9 +262,7 @@ class PlaybackService with ChangeNotifier, LogMixin {
               .then((resultsJson) {
             List<MusicResult> album = [];
             futures.add(resultsService.addMusicResults(
-                resultsJson: resultsJson,
-                musicResults: album,
-                isPlaylist: true));
+                resultsJson: resultsJson, musicResults: album, isPlaylist: true));
             albums.add(album);
           }));
         }
@@ -301,42 +277,54 @@ class PlaybackService with ChangeNotifier, LogMixin {
       log('Playlist built');
       _buildingPlaylist = false;
       _playback.track = 0;
-      _playback.duration = _playlist[0].duration;
       _playback.position = 0.0;
+      if (_playlist.isNotEmpty) {
+        _playback.duration = _playlist[0].duration;
+      } else {
+        _playback.duration = 0;
+        return 1;
+      }
     }
     return 0;
   }
 
   void startPlaybackTimer() {
     log('Starting playback timer');
-    Timer.periodic(const Duration(seconds: 1), (timer) {
-      data.twonky
-          .getPlayindex(
-              renderer: rendererService.renderer, getIsPlayIndexValid: true)
-          .then((playindex) => data.twonky
-                  .getState(renderer: rendererService.renderer, numeric: true)
-                  .then((state) {
-                log('Playback state=$state playindex=$playindex');
-                List<String> p = playindex.split('|');
-                List<String> s = state.split('|');
-                _playback.state = PlaybackState.values[int.parse(s[0])];
-                _playback.track = int.parse(p[0]);
-                _playback.duration = int.parse(s[2]) ~/ 1000;
-                assert(_playback.duration > 0);
-                if (_playback.duration > 0) {
-                  _playback.position = (int.parse(s[1]).toDouble() / 1000.0) /
-                      _playback.duration;
-                } else {
-                  _playback.position = 0;
-                }
-                if ((!isPlaying && !isPaused) ||
-                    (_playback.position >= 0.999 && nextTrack() == false)) {
-                  log('Playback timer cancelled! state=${_playback.state} position=${_playback.position}');
-                  timer.cancel();
-                }
-                notifyListeners();
-              }));
-    });
+    if (rendererService.hasRenderer) {
+      Timer.periodic(const Duration(seconds: 1), (timer) {
+        data.twonky
+            .getPlayindex(renderer: rendererService.renderer, getIsPlayIndexValid: true)
+            .then((playindex) {
+          data.twonky.getMute(renderer: rendererService.renderer).then((value) {
+            bool muted = (value == '1');
+            log('value = $value, muted is ${_playback.muted}, getMute is $muted');
+            if (_playback.muted != muted ) {
+              _playback.muted = muted;
+              notifyListeners();
+            }
+          });
+          data.twonky.getState(renderer: rendererService.renderer, numeric: true).then((state) {
+            log('Playback state=$state playindex=$playindex');
+            List<String> p = playindex.split('|');
+            List<String> s = state.split('|');
+            _playback.state = PlaybackState.values[int.parse(s[0])];
+            _playback.track = int.parse(p[0]);
+            _playback.duration = int.parse(s[2]) ~/ 1000;
+            if (_playback.duration > 0) {
+              _playback.position = (int.parse(s[1]).toDouble() / 1000.0) / _playback.duration;
+            } else {
+              _playback.position = 0;
+            }
+            if (isStopped || (_playback.position >= 0.999 && nextTrack() == false)) {
+              log('Playback timer cancelled! state=${_playback.state}'
+                  ' position=${_playback.position}');
+              timer.cancel();
+            }
+            notifyListeners();
+          });
+        });
+      });
+    }
   }
 
   String _duration(int seconds) {
@@ -345,8 +333,7 @@ class PlaybackService with ChangeNotifier, LogMixin {
 
   String get currentDuration => _duration(_playback.duration);
 
-  String get currentPosition =>
-      _duration((_playback.position * _playback.duration).round());
+  String get currentPosition => _duration((_playback.position * _playback.duration).round());
 
   double get playbackPosition => _playback.position;
 
@@ -381,4 +368,5 @@ class Playback {
   PlaybackState state = PlaybackState.stopped;
   double volume = 50.0;
   bool muted = false;
+// int seconds = 0;
 }

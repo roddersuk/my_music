@@ -1,17 +1,19 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:my_music/constants.dart';
 import 'package:provider/provider.dart';
 
 import '../models/data.dart';
 import '../models/playback_service.dart';
 
+/// Screen to display the current list of tracks, indicating the one playing
+/// The playing track can be changed by clicking one in the list
 class PlaylistScreen extends StatelessWidget {
   const PlaylistScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     TextStyle? titleLarge = Theme.of(context).textTheme.titleLarge;
-    // TextStyle? labelMedium = Theme.of(context).textTheme.labelMedium;
     TextStyle? labelSmall = Theme.of(context).textTheme.labelSmall;
     return Consumer2<Data, PlaybackService>(
       builder: (context, data, playbackService, child) {
@@ -60,7 +62,7 @@ class PlaylistScreen extends StatelessWidget {
                                                 Row(
                                                   children: [
                                                     Text(
-                                                      'Track: ',
+                                                      '$kMediaTrack :',
                                                       style: labelSmall,
                                                     ),
                                                     Text(
@@ -73,7 +75,8 @@ class PlaylistScreen extends StatelessWidget {
                                                 Row(
                                                   children: [
                                                     Text(
-                                                      'Album: ',
+
+                                                      '$kMediaAlbum :',
                                                       style: labelSmall,
                                                     ),
                                                     Text(
@@ -86,7 +89,7 @@ class PlaylistScreen extends StatelessWidget {
                                                 Row(
                                                   children: [
                                                     Text(
-                                                      'Artist: ',
+                                                      '$kMediaArtist :',
                                                       style: labelSmall,
                                                     ),
                                                     Text(
@@ -119,11 +122,11 @@ class PlaylistScreen extends StatelessWidget {
                           ],
                         )
                       : Text(
-                          'Choose a speaker!',
+                          kPlayNoSpeaker,
                           style: titleLarge,
                         )
                   : Text(
-                      'No playlist - choose some tracks!',
+                      kPlayNoMusic,
                       style: titleLarge,
                     ),
             ),
