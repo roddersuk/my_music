@@ -43,7 +43,7 @@ class PlaybackService with ChangeNotifier, LogMixin {
 
   Future<void> prepareQueue() async {
     log('Preparing Twonky queue');
-    int index = 0;
+    int index = 1;
     for (MusicResult item in _playlist) {
       // log('Add ${item.track} on ${item.album} at index $index');
       await data.twonky
